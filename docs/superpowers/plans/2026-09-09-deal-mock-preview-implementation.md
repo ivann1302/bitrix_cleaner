@@ -75,7 +75,7 @@
 - Consumes: установленные scripts и версии из `package.json`.
 - Produces: `App(): JSX.Element`, DOM-контейнер `#root`, работающие `typecheck`, `lint`, `test`, `build` и PHP lint.
 
-- [ ] **Step 1: Создать строгие TypeScript-конфиги**
+- [x] **Step 1: Создать строгие TypeScript-конфиги**
 
 `tsconfig.json`:
 
@@ -140,7 +140,7 @@
 }
 ```
 
-- [ ] **Step 2: Настроить Vite, Vitest и ESLint без новых зависимостей**
+- [x] **Step 2: Настроить Vite, Vitest и ESLint без новых зависимостей**
 
 `vite.config.ts`:
 
@@ -198,7 +198,7 @@ export default tseslint.config(
 import "@testing-library/jest-dom/vitest";
 ```
 
-- [ ] **Step 3: Написать падающий smoke-тест приложения**
+- [x] **Step 3: Написать падающий smoke-тест приложения**
 
 `src/app/App.test.tsx`:
 
@@ -222,13 +222,13 @@ describe("App", () => {
 });
 ```
 
-- [ ] **Step 4: Запустить smoke-тест и подтвердить ожидаемое падение**
+- [x] **Step 4: Запустить smoke-тест и подтвердить ожидаемое падение**
 
 Run: `npm test -- src/app/App.test.tsx`
 
 Expected: FAIL с ошибкой импорта `./App`, потому что компонент ещё не создан.
 
-- [ ] **Step 5: Реализовать минимальный React- и HTML-каркас**
+- [x] **Step 5: Реализовать минимальный React- и HTML-каркас**
 
 `src/app/App.tsx`:
 
@@ -312,7 +312,7 @@ body {
 </html>
 ```
 
-- [ ] **Step 6: Добавить минимальный PHP-вход**
+- [x] **Step 6: Добавить минимальный PHP-вход**
 
 `public/index.php`:
 
@@ -334,7 +334,7 @@ header('Content-Type: text/html; charset=UTF-8');
 readfile($indexPath);
 ```
 
-- [ ] **Step 7: Проверить каркас всеми относящимися командами**
+- [x] **Step 7: Проверить каркас всеми относящимися командами**
 
 Run: `npm test -- src/app/App.test.tsx`
 
@@ -356,7 +356,7 @@ Run: `php -l public/index.php`
 
 Expected: `No syntax errors detected in public/index.php`.
 
-- [ ] **Step 8: Зафиксировать каркас**
+- [x] **Step 8: Зафиксировать каркас**
 
 ```bash
 git add tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts eslint.config.js index.html public/index.php src
@@ -381,7 +381,7 @@ git commit -m "build: scaffold strict deal preview app"
 - Consumes: только стандартные возможности TypeScript.
 - Produces: `Deal`, `DealFilterOptions`, `DealSearchDraft`, `DealSearchCriteria`, `DealSearchResult`, `validateDealSearchDraft()`, `deduplicateDeals()`, `isDealSearchOverLimit()`, `getSelectionCounts()`, `getSelectedDealIds()`.
 
-- [ ] **Step 1: Написать падающие тесты критериев, лимита и дедупликации**
+- [x] **Step 1: Написать падающие тесты критериев, лимита и дедупликации**
 
 `src/deals/domain/dealSearch.test.ts`:
 
@@ -482,7 +482,7 @@ describe("deal search invariants", () => {
 });
 ```
 
-- [ ] **Step 2: Написать падающие тесты выбранного набора и счётчиков**
+- [x] **Step 2: Написать падающие тесты выбранного набора и счётчиков**
 
 `src/deals/domain/selection.test.ts`:
 
@@ -518,13 +518,13 @@ describe("preview selection", () => {
 });
 ```
 
-- [ ] **Step 3: Запустить доменные тесты и подтвердить ожидаемое падение**
+- [x] **Step 3: Запустить доменные тесты и подтвердить ожидаемое падение**
 
 Run: `npm test -- src/deals/domain`
 
 Expected: FAIL с ошибками отсутствующих модулей `dealSearch`, `selection` и `dealFixtures`.
 
-- [ ] **Step 4: Определить единые доменные типы**
+- [x] **Step 4: Определить единые доменные типы**
 
 `src/deals/domain/types.ts`:
 
@@ -597,7 +597,7 @@ export type DealSearchValidation =
     };
 ```
 
-- [ ] **Step 5: Реализовать минимальные чистые правила поиска**
+- [x] **Step 5: Реализовать минимальные чистые правила поиска**
 
 `src/deals/domain/dealSearch.ts`:
 
@@ -696,7 +696,7 @@ export function criteriaSignature(criteria: DealSearchCriteria): string {
 }
 ```
 
-- [ ] **Step 6: Реализовать выбор и малую фабрику тестовых данных**
+- [x] **Step 6: Реализовать выбор и малую фабрику тестовых данных**
 
 `src/deals/domain/selection.ts`:
 
@@ -774,7 +774,7 @@ export const TEST_FILTER_OPTIONS: DealFilterOptions = {
 };
 ```
 
-- [ ] **Step 7: Запустить доменные проверки**
+- [x] **Step 7: Запустить доменные проверки**
 
 Run: `npm test -- src/deals/domain`
 
@@ -784,7 +784,7 @@ Run: `npm run typecheck`
 
 Expected: exit 0.
 
-- [ ] **Step 8: Зафиксировать доменную модель**
+- [x] **Step 8: Зафиксировать доменную модель**
 
 ```bash
 git add src/deals/domain src/test/dealFixtures.ts
@@ -1147,7 +1147,7 @@ git commit -m "feat: add deterministic deal mock adapter"
 - Consumes: `BitrixAdapter.searchDeals()`, `DealSearchCriteria`, `DealSearchResult`, `toggleExcludedId()`.
 - Produces: `DealSearchState`, `dealSearchReducer()`, `useDealSearch(adapter)` returning `{ state, search, toggleExcluded }`.
 
-- [ ] **Step 1: Написать падающие reducer-тесты переходов и ревизий**
+- [x] **Step 1: Написать падающие reducer-тесты переходов и ревизий**
 
 `src/deals/state/searchState.test.ts`:
 
@@ -1234,7 +1234,7 @@ describe("dealSearchReducer", () => {
 });
 ```
 
-- [ ] **Step 2: Написать падающий hook-тест позднего асинхронного ответа**
+- [x] **Step 2: Написать падающий hook-тест позднего асинхронного ответа**
 
 `src/deals/state/useDealSearch.test.tsx`:
 
@@ -1315,13 +1315,13 @@ describe("useDealSearch", () => {
 });
 ```
 
-- [ ] **Step 3: Запустить state-тесты и подтвердить ожидаемое падение**
+- [x] **Step 3: Запустить state-тесты и подтвердить ожидаемое падение**
 
 Run: `npm test -- src/deals/state`
 
 Expected: FAIL с ошибками отсутствующих `searchState` и `useDealSearch`.
 
-- [ ] **Step 4: Реализовать исчерпывающее состояние поиска и reducer**
+- [x] **Step 4: Реализовать исчерпывающее состояние поиска и reducer**
 
 `src/deals/state/searchState.ts`:
 
@@ -1424,7 +1424,7 @@ export function dealSearchReducer(
 }
 ```
 
-- [ ] **Step 5: Реализовать единственную асинхронную команду поиска**
+- [x] **Step 5: Реализовать единственную асинхронную команду поиска**
 
 `src/deals/state/useDealSearch.ts`:
 
@@ -1463,7 +1463,7 @@ export function useDealSearch(adapter: BitrixAdapter) {
 }
 ```
 
-- [ ] **Step 6: Запустить проверки состояния и всего доменного слоя**
+- [x] **Step 6: Запустить проверки состояния и всего доменного слоя**
 
 Run: `npm test -- src/deals/state src/deals/domain src/deals/data`
 
@@ -1473,7 +1473,7 @@ Run: `npm run typecheck`
 
 Expected: exit 0.
 
-- [ ] **Step 7: Зафиксировать ревизионную модель поиска**
+- [x] **Step 7: Зафиксировать ревизионную модель поиска**
 
 ```bash
 git add src/deals/state
@@ -1496,7 +1496,7 @@ git commit -m "feat: ignore stale deal search responses"
 - Consumes: `BitrixAdapter`, `DealFilterOptions`, `DealSearchDraft`, `validateDealSearchDraft()`, `criteriaSignature()`, `useDealSearch()`.
 - Produces: доступная форма с controlled draft, клиентскими ошибками, ручным submit и различимыми UI-состояниями поиска.
 
-- [ ] **Step 1: Заменить smoke-тест падающими пользовательскими сценариями формы**
+- [x] **Step 1: Заменить smoke-тест падающими пользовательскими сценариями формы**
 
 В `src/app/App.test.tsx` сохранить smoke-проверку отсутствия удаления и добавить следующий helper и тесты:
 
@@ -1616,13 +1616,13 @@ describe("App", () => {
 });
 ```
 
-- [ ] **Step 2: Запустить App-тесты и подтвердить ожидаемое падение**
+- [x] **Step 2: Запустить App-тесты и подтвердить ожидаемое падение**
 
 Run: `npm test -- src/app/App.test.tsx`
 
 Expected: FAIL, потому что `App` ещё не принимает адаптер и не показывает форму.
 
-- [ ] **Step 3: Реализовать контролируемую форму фильтров**
+- [x] **Step 3: Реализовать контролируемую форму фильтров**
 
 `src/deals/ui/DealFilters.tsx`:
 
@@ -1773,7 +1773,7 @@ export function DealFilters({
 }
 ```
 
-- [ ] **Step 4: Реализовать отдельные сообщения состояний**
+- [x] **Step 4: Реализовать отдельные сообщения состояний**
 
 `src/deals/ui/SearchFeedback.tsx`:
 
@@ -1820,7 +1820,7 @@ export function SearchFeedback({ state }: SearchFeedbackProps) {
 }
 ```
 
-- [ ] **Step 5: Связать адаптер, справочники, валидацию и поиск в App**
+- [x] **Step 5: Связать адаптер, справочники, валидацию и поиск в App**
 
 Заменить `src/app/App.tsx` следующим содержимым:
 
@@ -1946,7 +1946,7 @@ export function App({ adapter = defaultAdapter }: AppProps) {
 }
 ```
 
-- [ ] **Step 6: Запустить пользовательские тесты формы и состояний**
+- [x] **Step 6: Запустить пользовательские тесты формы и состояний**
 
 Run: `npm test -- src/app/App.test.tsx`
 
@@ -1960,7 +1960,7 @@ Run: `npm run lint`
 
 Expected: exit 0.
 
-- [ ] **Step 7: Зафиксировать фильтры и UI-состояния**
+- [x] **Step 7: Зафиксировать фильтры и UI-состояния**
 
 ```bash
 git add src/app src/deals/ui/DealFilters.tsx src/deals/ui/SearchFeedback.tsx
@@ -1985,7 +1985,7 @@ git commit -m "feat: add deal filters and search states"
 - Consumes: ready-вариант `DealSearchState`, `getSelectionCounts()`, `getSelectedDealIds()`, `toggleExcluded(id)`.
 - Produces: `PREVIEW_PAGE_SIZE`, `getPreviewPageCount()`, `getPreviewPageItems()`, таблицу `DealPreview` с действиями для всего результата.
 
-- [ ] **Step 1: Написать падающие тесты границ пагинации 0/1/50/51**
+- [x] **Step 1: Написать падающие тесты границ пагинации 0/1/50/51**
 
 `src/deals/ui/pagination.test.ts`:
 
@@ -2019,7 +2019,7 @@ describe("preview pagination", () => {
 });
 ```
 
-- [ ] **Step 2: Написать падающие UI-тесты исключения, страниц и безопасного текста**
+- [x] **Step 2: Написать падающие UI-тесты исключения, страниц и безопасного текста**
 
 `src/deals/ui/DealPreview.test.tsx`:
 
@@ -2134,13 +2134,13 @@ describe("DealPreview", () => {
 });
 ```
 
-- [ ] **Step 3: Запустить preview-тесты и подтвердить ожидаемое падение**
+- [x] **Step 3: Запустить preview-тесты и подтвердить ожидаемое падение**
 
 Run: `npm test -- src/deals/ui/pagination.test.ts src/deals/ui/DealPreview.test.tsx`
 
 Expected: FAIL с ошибками отсутствующих `pagination` и `DealPreview`.
 
-- [ ] **Step 4: Реализовать чистую пагинацию**
+- [x] **Step 4: Реализовать чистую пагинацию**
 
 `src/deals/ui/pagination.ts`:
 
@@ -2164,7 +2164,7 @@ export function getPreviewPageItems<T>(
 }
 ```
 
-- [ ] **Step 5: Реализовать preview-компонент без опасного продолжения**
+- [x] **Step 5: Реализовать preview-компонент без опасного продолжения**
 
 `src/deals/ui/DealPreview.tsx`:
 
@@ -2313,7 +2313,7 @@ export function DealPreview({ state, onToggleExcluded }: DealPreviewProps) {
 }
 ```
 
-- [ ] **Step 6: Подключить preview к ready-ревизии App**
+- [x] **Step 6: Подключить preview к ready-ревизии App**
 
 В `src/app/App.tsx` импортировать `DealPreview`, получить `toggleExcluded` из hook и после `SearchFeedback` добавить:
 
@@ -2338,7 +2338,7 @@ import { DealPreview } from "../deals/ui/DealPreview";
 const { state, search, toggleExcluded } = useDealSearch(adapter);
 ```
 
-- [ ] **Step 7: Дополнить App-тест интеграцией preview и отсутствием удаления**
+- [x] **Step 7: Дополнить App-тест интеграцией preview и отсутствием удаления**
 
 Добавить в `src/app/App.test.tsx` тест, который вводит дату, запускает поиск, исключает строку и проверяет, что доступен только обратимый action:
 
@@ -2367,7 +2367,7 @@ it("связывает готовый результат с исключение
 });
 ```
 
-- [ ] **Step 8: Запустить preview и интеграционные тесты**
+- [x] **Step 8: Запустить preview и интеграционные тесты**
 
 Run: `npm test -- src/deals/ui src/app/App.test.tsx`
 
@@ -2381,7 +2381,7 @@ Run: `npm run lint`
 
 Expected: exit 0.
 
-- [ ] **Step 9: Зафиксировать полный локальный preview**
+- [x] **Step 9: Зафиксировать полный локальный preview**
 
 ```bash
 git add src/app src/deals/ui
@@ -2406,7 +2406,7 @@ git commit -m "feat: add paginated deal preview"
 - Consumes: все CSS-классы из Tasks 1, 5 и 6, проверенные npm/PHP-команды.
 - Produces: адаптивный teal UI, production package с относительными assets, синхронизированный фактический статус и журнал mock-проверок.
 
-- [ ] **Step 1: Зафиксировать падающую проверку адаптивных и focus-правил**
+- [x] **Step 1: Зафиксировать исходное отсутствие временных CSS-правил**
 
 До изменения CSS выполнить:
 
@@ -2418,7 +2418,7 @@ Run: `rg -n --fixed-strings ':focus-visible' src/styles.css`
 
 Expected: exit 1, правило ещё отсутствует.
 
-- [ ] **Step 2: Заменить временный CSS на утверждённые визуальные правила**
+- [x] **Step 2: Заменить временный CSS на утверждённые визуальные правила**
 
 `src/styles.css`:
 
@@ -2843,7 +2843,7 @@ button:disabled {
 }
 ```
 
-- [ ] **Step 3: Проверить наличие обязательных адаптивных и focus-правил**
+- [x] **Step 3: Проверить адаптивность и фокус в браузере**
 
 Run: `rg -n --fixed-strings '@media (max-width: 1100px)' src/styles.css`
 
@@ -2853,13 +2853,13 @@ Run: `rg -n --fixed-strings ':focus-visible' src/styles.css`
 
 Expected: три selector-строки в одном правиле.
 
-- [ ] **Step 4: Отформатировать только созданные файлы**
+- [x] **Step 4: Отформатировать только созданные файлы**
 
 Run: `npm exec prettier -- --write "src/**/*.{ts,tsx,css}" index.html vite.config.ts eslint.config.js tsconfig.json tsconfig.app.json tsconfig.node.json`
 
 Expected: exit 0; существующие архивные документы и vendored skills не изменены.
 
-- [ ] **Step 5: Выполнить полный автоматический acceptance gate**
+- [x] **Step 5: Выполнить полный автоматический acceptance gate**
 
 Run: `npm run typecheck`
 
@@ -2897,13 +2897,13 @@ Run: `rg -n 'client_secret|refresh_token|crm\.item\.delete|dangerouslySetInnerHT
 
 Expected: exit 1; секретов, DELETE-контракта и небезопасного HTML нет.
 
-- [ ] **Step 6: Выполнить визуальную проверку локального preview**
+- [x] **Step 6: Выполнить визуальную проверку локального preview**
 
 Run: `npm run dev -- --host 127.0.0.1`
 
 Проверить в Chrome на ширинах 1440, 1024 и 700 px: labels и focus-ring видимы; при 1024 px сводка находится над таблицей; при 700 px фильтры идут одной колонкой; горизонтальная прокрутка ограничена таблицей; исключение строки сразу меняет три счётчика; ни на одном экране нет красной кнопки или действия удаления. Остановить dev-сервер после проверки.
 
-- [ ] **Step 7: Обновить README только проверенными командами и статусом**
+- [x] **Step 7: Обновить README только проверенными командами и статусом**
 
 В `README.md` заменить раздел `Статус` текстом:
 
@@ -2954,7 +2954,7 @@ Run: `npm run dev -- --host 127.0.0.1`
 | Проверка PHP              | `php -l public/index.php` |
 ```
 
-- [ ] **Step 8: Синхронно обновить PLAN и фактический STATUS**
+- [x] **Step 8: Синхронно обновить PLAN и фактический STATUS**
 
 В обоих файлах `PLAN.md` и `docs/PLAN.md` отметить 1.1 выполненным и разделить 1.2 без изменения объёма:
 
@@ -2981,7 +2981,7 @@ Expected: exit 0.
 
 Убрать из `Ещё не сделано` утверждения, что каркас, конфиги, сборка, тесты и mock-адаптер отсутствуют. Не объявлять SprintHost или Bitrix24 проверенными.
 
-- [ ] **Step 9: Записать только полностью пройденные mock-сценарии в TEST-MATRIX**
+- [x] **Step 9: Записать только полностью пройденные mock-сценарии в TEST-MATRIX**
 
 После успешного Step 5 изменить Mock-ячейки `T01`, `T02`, `T05`, `T26` и `T28` с `НЗ` на `PASS`. Остальные строки оставить `НЗ`, потому что подтверждение, CSV, реальный портал и удаление находятся вне среза.
 
@@ -2997,7 +2997,7 @@ Expected: exit 0.
 - Ограничения: Bitrix24, SprintHost, CSV, подтверждение и реальные изменения CRM не проверялись.
 ```
 
-- [ ] **Step 10: Повторить финальную проверку после документации**
+- [x] **Step 10: Повторить финальную проверку после документации**
 
 Run: `npm run typecheck`
 
@@ -3027,12 +3027,19 @@ Run: `npm ls --depth=0`
 
 Expected: exit 0 без missing/invalid packages.
 
-- [ ] **Step 11: Зафиксировать визуальную и документальную приёмку**
+- [x] **Step 11: Зафиксировать визуальную и документальную приёмку**
 
 ```bash
 git add src/styles.css README.md PLAN.md docs/PLAN.md docs/STATUS.md docs/TEST-MATRIX.md
 git commit -m "docs: record verified deal mock preview"
 ```
+
+### Фактическое завершение · 10 сентября 2026 года
+
+- Tasks 1–6 выполнены отдельными commits `6b77c57`–`a610384`; их чекбоксы синхронизированы с историей. Task 7 дополняет их CSS, доказательствами в браузере и документацией.
+- Отклонение от исходного Step 9: T02, T05, T26 и T28 не отмечены PASS, потому что соответствующие строки также требуют ещё не существующие DELETE, смену портала или проверку публичной среды. В `TEST-MATRIX.md` оставлены НЗ и добавлены scoped local evidence с исходниками и браузерным результатом.
+- Отклонение от исходных CSS-проверок: наличие селектора не считается доказательством. Реальная проверка выполнена в Chrome на 1 440/1 024/700 px, включая focus ring, отсутствие document overflow и таблицу как единственный горизонтально прокручиваемый блок; скриншоты сохранены в `.superpowers/sdd/2026-09-09-deal-mock-preview-implementation/task-7-screenshots/`.
+- В `MockBitrixAdapter.test.ts` fake timers теперь возвращаются в `afterEach`, включая путь с неуспешной проверкой.
 
 ---
 

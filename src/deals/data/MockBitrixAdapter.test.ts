@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDeal } from "../../test/dealFixtures";
 import type { Deal, DealSearchCriteria } from "../domain/types";
 import { MockBitrixAdapter } from "./MockBitrixAdapter";
@@ -19,6 +19,10 @@ function createDeals(count: number): readonly Deal[] {
 }
 
 describe("MockBitrixAdapter", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("returns only lost stages in filter options", async () => {
     const adapter = new MockBitrixAdapter();
 
@@ -140,6 +144,5 @@ describe("MockBitrixAdapter", () => {
       code: "mock-unavailable",
     });
     expect(delayMs).toHaveBeenCalledWith(baseCriteria);
-    vi.useRealTimers();
   });
 });
