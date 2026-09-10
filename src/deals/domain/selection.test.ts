@@ -26,4 +26,39 @@ describe("preview selection", () => {
 
     expect([...restored]).toEqual([]);
   });
+
+  it("выбирает и считает лиды по исключённым ID", () => {
+    const leads = [
+      {
+        entity: "lead" as const,
+        id: "lead-1",
+        title: "Неактуальный лид",
+        statusId: "JUNK",
+        statusName: "Некачественный",
+        assignedById: "10",
+        assignedByName: "Анна Смирнова",
+        createdAt: "2026-01-10T09:00:00.000Z",
+        updatedAt: "2026-01-20T09:00:00.000Z",
+      },
+      {
+        entity: "lead" as const,
+        id: "lead-2",
+        title: "Закрытый лид",
+        statusId: "JUNK",
+        statusName: "Некачественный",
+        assignedById: "20",
+        assignedByName: "Михаил Волков",
+        createdAt: "2026-01-11T09:00:00.000Z",
+        updatedAt: "2026-01-21T09:00:00.000Z",
+      },
+    ];
+    const excludedIds = toggleExcludedId(new Set<string>(), "lead-2");
+
+    expect(getSelectedDealIds(leads, excludedIds)).toEqual(["lead-1"]);
+    expect(getSelectionCounts(leads, excludedIds)).toEqual({
+      found: 2,
+      selected: 1,
+      excluded: 1,
+    });
+  });
 });
