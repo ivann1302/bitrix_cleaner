@@ -807,7 +807,7 @@ git commit -m "feat: define deal search domain rules"
 - Consumes: `DealSearchCriteria`, `DealSearchResult`, `DealFilterOptions`, `deduplicateDeals()`, `isDealSearchOverLimit()`.
 - Produces: `BitrixAdapter.getDealFilterOptions()`, `BitrixAdapter.searchDeals()`, `MockBitrixAdapter`, `MOCK_DEALS`, `MOCK_FILTER_OPTIONS`.
 
-- [ ] **Step 1: Написать падающие контрактные тесты mock-адаптера**
+- [x] **Step 1: Написать падающие контрактные тесты mock-адаптера**
 
 `src/deals/data/MockBitrixAdapter.test.ts`:
 
@@ -909,13 +909,13 @@ describe("MockBitrixAdapter", () => {
 });
 ```
 
-- [ ] **Step 2: Запустить тест адаптера и подтвердить ожидаемое падение**
+- [x] **Step 2: Запустить тест адаптера и подтвердить ожидаемое падение**
 
 Run: `npm test -- src/deals/data/MockBitrixAdapter.test.ts`
 
 Expected: FAIL с ошибкой отсутствующего `MockBitrixAdapter`.
 
-- [ ] **Step 3: Определить read-only порт данных**
+- [x] **Step 3: Определить read-only порт данных**
 
 `src/deals/data/BitrixAdapter.ts`:
 
@@ -932,7 +932,7 @@ export interface BitrixAdapter {
 }
 ```
 
-- [ ] **Step 4: Добавить детерминированные справочники и сделки**
+- [x] **Step 4: Добавить детерминированные справочники и сделки**
 
 `src/deals/data/mockDeals.ts` должен экспортировать следующие точные объекты:
 
@@ -1001,7 +1001,7 @@ export const MOCK_DEALS: readonly Deal[] = [
 ];
 ```
 
-- [ ] **Step 5: Реализовать фильтрацию, дедупликацию, лимит и управляемую задержку**
+- [x] **Step 5: Реализовать фильтрацию, дедупликацию, лимит и управляемую задержку**
 
 `src/deals/data/MockBitrixAdapter.ts`:
 
@@ -1051,11 +1051,11 @@ export class MockBitrixAdapter implements BitrixAdapter {
     this.behavior = config.behavior ?? {};
   }
 
-  public async getDealFilterOptions(): Promise<DealFilterOptions> {
-    return {
+  public getDealFilterOptions(): Promise<DealFilterOptions> {
+    return Promise.resolve({
       ...this.options,
       stages: this.options.stages.filter((stage) => stage.isLost),
-    };
+    });
   }
 
   public async searchDeals(
@@ -1114,17 +1114,17 @@ export class MockBitrixAdapter implements BitrixAdapter {
 }
 ```
 
-- [ ] **Step 6: Запустить тесты адаптера и домена**
+- [x] **Step 6: Запустить тесты адаптера и домена**
 
 Run: `npm test -- src/deals/data src/deals/domain`
 
-Expected: PASS, 13 tests.
+Expected: PASS, 18 tests.
 
 Run: `npm run typecheck`
 
 Expected: exit 0.
 
-- [ ] **Step 7: Зафиксировать mock-границу данных**
+- [x] **Step 7: Зафиксировать mock-границу данных**
 
 ```bash
 git add src/deals/data
