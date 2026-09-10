@@ -17,6 +17,8 @@ export type DealSearchState =
       readonly kind: "ready";
       readonly items: readonly Deal[];
       readonly excludedIds: ReadonlySet<string>;
+      readonly collectedAt: number;
+      readonly selectionVersion: number;
     } & RevisionState)
   | ({ readonly kind: "empty" } & RevisionState)
   | ({
@@ -40,12 +42,14 @@ export type DealSearchAction =
       readonly type: "resolved";
       readonly revision: number;
       readonly result: DealSearchResult;
+      readonly collectedAt: number;
     }
   | { readonly type: "toggle-excluded"; readonly id: string };
 
 function resolvedState(
   state: Extract<DealSearchState, { kind: "loading" }>,
   result: DealSearchResult,
+  collectedAt: number,
 ): DealSearchState {
   const base = { revision: state.revision, criteria: state.criteria };
   switch (result.kind) {
@@ -57,6 +61,8 @@ function resolvedState(
             ...base,
             items: result.items,
             excludedIds: new Set(),
+            collectedAt,
+            selectionVersion: 0,
           };
     case "empty":
       return { kind: "empty", ...base };
@@ -86,7 +92,7 @@ export function dealSearchReducer(
       if (state.kind !== "loading" || state.revision !== action.revision) {
         return state;
       }
-      return resolvedState(state, action.result);
+      return resolvedState(state, action.result, action.collectedAt);
     case "toggle-excluded":
       if (
         state.kind !== "ready" ||
@@ -97,6 +103,7 @@ export function dealSearchReducer(
       return {
         ...state,
         excludedIds: toggleExcludedId(state.excludedIds, action.id),
+        selectionVersion: state.selectionVersion + 1,
       };
   }
 }

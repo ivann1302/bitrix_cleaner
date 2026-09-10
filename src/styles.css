@@ -22,6 +22,8 @@
   --color-focus: #66bdb4;
   --color-danger-soft: #fff0f1;
   --color-danger-text: #a72831;
+  --color-danger: #d83b41;
+  --color-danger-hover: #be2f35;
   --color-warning: #966100;
   --color-warning-soft: #fff6dd;
 }
@@ -52,6 +54,12 @@ input {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.confirmation-panel:focus-visible,
+.operation-panel summary:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
@@ -479,4 +487,83 @@ button:disabled {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.operation-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.confirmation-panel,
+.operation-panel {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+dialog {
+  width: min(620px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: 0 16px 48px rgb(23 35 33 / 12%);
+  overflow: auto;
+}
+
+dialog::backdrop {
+  background: rgb(23 35 33 / 40%);
+}
+
+dialog h2,
+.operation-panel h2 {
+  margin-bottom: 16px;
+}
+
+dialog .criteria-summary {
+  margin-bottom: 16px;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.danger-button {
+  padding: 10px 18px;
+  border: 1px solid var(--color-danger);
+  border-radius: 8px;
+  color: white;
+  background: var(--color-danger);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: var(--color-danger-hover);
+}
+
+.operation-panel progress {
+  width: 100%;
+  accent-color: var(--color-primary);
+}
+.operation-panel details {
+  margin-top: 16px;
+}
+.operation-panel summary {
+  cursor: pointer;
+  min-height: 40px;
+}
+.operation-items {
+  max-height: 320px;
+  overflow: auto;
 }

@@ -20,6 +20,7 @@ function readyState() {
     }),
     {
       type: "resolved",
+      collectedAt: 1000,
       revision: 1,
       result: { kind: "success", items: [createDeal({ id: "5" })] },
     },
@@ -35,12 +36,14 @@ describe("dealSearchReducer", () => {
     });
     const ready = dealSearchReducer(loading, {
       type: "resolved",
+      collectedAt: 1000,
       revision: 1,
       result: { kind: "success", items: [createDeal()] },
     });
 
     expect(loading).toMatchObject({ kind: "loading", revision: 1 });
     expect(ready).toMatchObject({ kind: "ready", revision: 1 });
+    expect(ready).toMatchObject({ collectedAt: 1000, selectionVersion: 0 });
   });
 
   it("игнорирует результат старой ревизии", () => {
@@ -56,6 +59,7 @@ describe("dealSearchReducer", () => {
     });
     const staleResolution = dealSearchReducer(second, {
       type: "resolved",
+      collectedAt: 1000,
       revision: 1,
       result: { kind: "success", items: [createDeal({ id: "old" })] },
     });
@@ -82,6 +86,7 @@ describe("dealSearchReducer", () => {
     expect(restored.kind === "ready" && restored.excludedIds.has("5")).toBe(
       false,
     );
+    expect(restored).toMatchObject({ collectedAt: 1000, selectionVersion: 2 });
   });
 
   it("игнорирует исключение ID вне текущего результата", () => {

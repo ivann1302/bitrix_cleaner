@@ -3,6 +3,7 @@ import { getSelectionCounts } from "../domain/selection";
 import type { Deal, DealFilterOptions } from "../domain/types";
 import type { DealSearchState } from "../state/searchState";
 import { CriteriaSummary } from "./CriteriaSummary";
+import { DealCsvExport } from "./DealCsvExport";
 import { getPreviewPageCount, getPreviewPageItems } from "./pagination";
 
 type ReadyState = Extract<DealSearchState, { kind: "ready" }>;
@@ -150,8 +151,9 @@ export function DealPreview({
           options={options}
           title="Условия сохранённого поиска"
         />
+        <DealCsvExport items={state.items} excludedIds={state.excludedIds} />
         <p className="demo-note">
-          Это локальный preview. Действия удаления нет.
+          Это локальный preview искусственных данных. Запросов к Bitrix24 нет.
         </p>
       </aside>
     </section>

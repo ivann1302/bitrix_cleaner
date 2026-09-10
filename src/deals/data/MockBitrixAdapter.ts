@@ -7,12 +7,16 @@ import type {
 } from "../domain/types";
 import type { BitrixAdapter } from "./BitrixAdapter";
 import { MOCK_DEALS, MOCK_FILTER_OPTIONS } from "./mockDeals";
+import { MOCK_CONTEXT } from "./mockContext";
+import type { OperationContext } from "../domain/confirmation";
+import type { DeleteOutcome, DeleteTransport } from "../operation/types";
 
 const MOCK_TIME_ZONE_OFFSET_MINUTES = 180;
 
 export interface MockBitrixAdapterBehavior {
   readonly delayMs?: number | ((criteria: DealSearchCriteria) => number);
   readonly failureCode?: string;
+  readonly deleteDelayMs?: number;
 }
 
 export interface MockBitrixAdapterConfig {
@@ -34,10 +38,11 @@ function wait(milliseconds: number): Promise<void> {
   });
 }
 
-export class MockBitrixAdapter implements BitrixAdapter {
+export class MockBitrixAdapter implements BitrixAdapter, DeleteTransport {
   private readonly deals: readonly Deal[];
   private readonly options: DealFilterOptions;
   private readonly behavior: MockBitrixAdapterBehavior;
+  private readonly deletedIds = new Set<string>();
 
   public constructor(config: MockBitrixAdapterConfig = {}) {
     this.deals = config.deals ?? MOCK_DEALS;
@@ -50,6 +55,27 @@ export class MockBitrixAdapter implements BitrixAdapter {
       ...this.options,
       stages: this.options.stages.filter((stage) => stage.isLost),
     });
+  }
+
+  public async deleteDeal(
+    id: string,
+    context: OperationContext,
+  ): Promise<DeleteOutcome> {
+    if (
+      !context.isAdmin ||
+      context.portal !== MOCK_CONTEXT.portal ||
+      context.userId !== MOCK_CONTEXT.userId ||
+      context.entity !== "deal"
+    ) {
+      return { kind: "error", code: "access-denied", temporary: false };
+    }
+    const delay = this.behavior.deleteDelayMs ?? 0;
+    if (delay > 0) await wait(delay);
+    if (this.deletedIds.has(id) || !this.deals.some((deal) => deal.id === id)) {
+      return { kind: "error", code: "not-found", temporary: false };
+    }
+    this.deletedIds.add(id);
+    return { kind: "deleted" };
   }
 
   public async searchDeals(
@@ -78,6 +104,7 @@ export class MockBitrixAdapter implements BitrixAdapter {
       criteria.beforeDate === null ? null : endOfMockDay(criteria.beforeDate);
     const matches = deduplicateDeals(
       this.deals.filter((deal) => {
+        if (this.deletedIds.has(deal.id)) return false;
         if (!lostStageIds.has(deal.stageId)) return false;
         if (
           criteria.pipelineId !== null &&

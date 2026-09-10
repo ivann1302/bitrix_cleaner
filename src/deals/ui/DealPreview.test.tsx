@@ -25,6 +25,8 @@ function PreviewHarness({ items }: { readonly items: readonly Deal[] }) {
     criteria,
     items,
     excludedIds,
+    collectedAt: 1000,
+    selectionVersion: 0,
   };
 
   return (

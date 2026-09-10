@@ -32,7 +32,7 @@ export function useDealSearch(adapter: BitrixAdapter) {
     }
 
     if (requestLifecycle === lifecycleRevision.current) {
-      dispatch({ type: "resolved", revision, result });
+      dispatch({ type: "resolved", revision, result, collectedAt: Date.now() });
     }
   }
 
