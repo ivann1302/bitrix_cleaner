@@ -1,0 +1,11 @@
+.agents/
+.codex/
+.superpowers/
+crm-cleaner-docs/
+assets/
+third-party/
+node_modules/
+dist/
+coverage/
+crm-cleaner-docs.zip
+package-lock.json
