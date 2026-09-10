@@ -66,12 +66,14 @@ export function DealPreview({
                     className={excluded ? "row-excluded" : undefined}
                   >
                     <td>
-                      <input
-                        type="checkbox"
-                        checked={!excluded}
-                        aria-label={`Включить ${deal.title}`}
-                        onChange={() => onToggleExcluded(deal.id)}
-                      />
+                      <label className="checkbox-hit-target">
+                        <input
+                          type="checkbox"
+                          checked={!excluded}
+                          aria-label={`Включить ${deal.title}`}
+                          onChange={() => onToggleExcluded(deal.id)}
+                        />
+                      </label>
                     </td>
                     <td>
                       <strong>{deal.title}</strong>

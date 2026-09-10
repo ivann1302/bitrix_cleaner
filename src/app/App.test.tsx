@@ -151,6 +151,22 @@ describe("App", () => {
     expect(await screen.findByText(message)).toBeInTheDocument();
   });
 
+  it.each([
+    [{ kind: "empty" } as const, "По этим условиям сделок нет"],
+    [
+      { kind: "over-limit", matchedAtLeast: 3001 } as const,
+      "Найдено больше 3 000 сделок. Сузьте условия.",
+    ],
+  ])("объявляет терминальный результат %#", async (result, message) => {
+    const user = userEvent.setup();
+    render(<App adapter={adapterWith(result)} />);
+
+    await user.type(await screen.findByLabelText("Дата до"), "2026-01-31");
+    await user.click(screen.getByRole("button", { name: "Найти сделки" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(message);
+  });
+
   it("показывает loading, ready и устаревший preview после изменения фильтра", async () => {
     const user = userEvent.setup();
     let resolveSearch: ((value: DealSearchResult) => void) | undefined;

@@ -172,7 +172,7 @@ h2 {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 16px;
   margin: 24px 0;
 }
@@ -330,7 +330,15 @@ button:disabled {
   background: #fafafa;
 }
 
-.deal-table input[type="checkbox"] {
+.checkbox-hit-target {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.checkbox-hit-target input[type="checkbox"] {
   width: 20px;
   min-height: 20px;
   height: 20px;

@@ -21,10 +21,14 @@ export function SearchFeedback({ state }: SearchFeedbackProps) {
         </p>
       );
     case "empty":
-      return <p className="status-panel">По этим условиям сделок нет</p>;
+      return (
+        <p className="status-panel" role="status">
+          По этим условиям сделок нет
+        </p>
+      );
     case "over-limit":
       return (
-        <p className="status-panel warning">
+        <p className="status-panel warning" role="status">
           Найдено больше 3 000 сделок. Сузьте условия.
         </p>
       );
