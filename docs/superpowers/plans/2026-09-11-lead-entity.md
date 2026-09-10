@@ -352,11 +352,9 @@ git commit -m "feat: add isolated mock lead operations"
 
 **Files:**
 
-- Modify: `src/deals/data/BitrixAdapter.ts`
 - Modify: `src/deals/data/BitrixDealReadAdapter.ts`
 - Modify: `src/deals/data/BitrixDealReadAdapter.test.ts`
 - Modify: `src/bitrix/B24SdkReadGateway.test.ts`
-- Modify: `src/app/runtime.ts`
 - Modify: `src/app/runtime.test.ts`
 
 **Interfaces:**
@@ -442,7 +440,7 @@ Expected: all selected tests and typecheck PASS; no mutating method is permitted
 - [ ] **Step 5: Commit the read-only integration increment**
 
 ```bash
-git add src/deals/data/BitrixAdapter.ts src/deals/data/BitrixDealReadAdapter.ts src/deals/data/BitrixDealReadAdapter.test.ts src/bitrix/B24SdkReadGateway.test.ts src/app/runtime.ts src/app/runtime.test.ts
+git add src/deals/data/BitrixDealReadAdapter.ts src/deals/data/BitrixDealReadAdapter.test.ts src/bitrix/B24SdkReadGateway.test.ts src/app/runtime.test.ts
 git commit -m "feat: read failed leads from Bitrix24"
 ```
 
@@ -454,6 +452,11 @@ git commit -m "feat: read failed leads from Bitrix24"
 
 - Modify: `src/deals/domain/dealCsv.ts`
 - Modify: `src/deals/domain/dealCsv.test.ts`
+- Modify: `src/deals/domain/types.ts`
+- Modify: `src/deals/data/BitrixDealReadAdapter.ts`
+- Modify: `src/deals/data/BitrixDealReadAdapter.test.ts`
+- Modify: `src/deals/data/mockDeals.ts`
+- Modify: `src/test/dealFixtures.ts`
 - Modify: `src/deals/ui/CriteriaSummary.tsx`
 - Modify: `src/deals/ui/DealFilters.tsx`
 - Modify: `src/deals/ui/DealPreview.tsx`
@@ -537,6 +540,12 @@ export const ENTITY_COPY = {
 
 Do not derive security decisions from localized text; the discriminator remains authoritative.
 
+Complete the Task 1 migration by removing the temporary deal item aliases
+`stageId` and `stageName`. Deal criteria and stage dictionary entries retain
+their existing names, but every preview item uses the shared `statusId` and
+`statusName` fields. Update the real parser, mock data, fixtures, and exact
+expectations accordingly.
+
 - [ ] **Step 4: Run all UI and shared-domain tests plus typecheck**
 
 Run:
@@ -551,7 +560,7 @@ Expected: all selected tests and typecheck PASS for both entities.
 - [ ] **Step 5: Commit the entity-aware presentation increment**
 
 ```bash
-git add src/deals/domain/dealCsv.ts src/deals/domain/dealCsv.test.ts src/deals/ui
+git add src/deals/domain/dealCsv.ts src/deals/domain/dealCsv.test.ts src/deals/domain/types.ts src/deals/data/BitrixDealReadAdapter.ts src/deals/data/BitrixDealReadAdapter.test.ts src/deals/data/mockDeals.ts src/deals/ui src/test/dealFixtures.ts
 git commit -m "feat: present and export lead previews"
 ```
 
