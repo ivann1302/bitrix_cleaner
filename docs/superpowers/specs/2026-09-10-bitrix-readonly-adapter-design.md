@@ -21,11 +21,15 @@ request. Direct top-level development remains an explicit mock mode.
   use deterministic fakes and never need a portal.
 - Permit only the read methods `profile`, `crm.category.list`,
   `crm.status.list`, `user.get`, and `crm.item.list` in the gateway.
-- Use the SDK's cursor-based list generator and stop as soon as 3,001 unique IDs
-  are collected. Never report a truncated 3,000-item success.
+- Use offset pagination for categories so the default category `id=0` is not
+  excluded by the SDK cursor's initial `>id: 0` filter. Use the SDK cursor-based
+  list generator for stages, users, and deals. Stop deal collection as soon as
+  3,001 unique IDs are collected. Never report a truncated 3,000-item success.
 - Determine lost stages from Bitrix24 stage metadata. Never hard-code stage IDs.
-- Convert a date-only boundary to `23:59:59` with the current user's portal
-  offset returned by `profile`.
+- Convert a date-only boundary to `23:59:59` using the profile's IANA zone so
+  historical DST is correct. Treat `TIME_ZONE_OFFSET` as optional because it is
+  absent from the documented `profile` contract; if neither value is available,
+  expose the zone as unavailable and use an explicit UTC fallback.
 - Validate all external payloads at runtime. UI-visible failures contain only
   stable local codes and never raw SDK messages, request parameters, or tokens.
 - Real mode is preview-only in this increment: it receives no deletion
@@ -73,11 +77,12 @@ interface AppContext {
 }
 ```
 
-`BitrixDealReadAdapter.loadContext()` parses `profile`. Filter options load
-categories, the stage directory for each category, and active users. Search
-builds one server filter containing lost-stage IDs plus any selected pipeline,
-stage, responsible user, and inclusive date boundary. Returned deals are
-deduplicated by ID and mapped to the already loaded dictionaries.
+`BitrixDealReadAdapter.loadContext()` parses `profile`. Filter options load all
+offset pages of categories, the stage directory for each category, and active
+users; duplicates are removed and CRM sort order is restored after traversal.
+Search builds one server filter containing lost-stage IDs plus any selected
+pipeline, stage, responsible user, and inclusive date boundary. Returned deals
+are deduplicated by ID and mapped to the already loaded dictionaries.
 
 ## Failure behavior
 
@@ -92,8 +97,9 @@ deduplicated by ID and mapped to the already loaded dictionaries.
 ## Verification
 
 - Contract tests assert exact method names and parameters.
-- Pagination tests prove early stop at 3,001 unique deals and deduplication
-  before the limit decision.
+- Pagination tests prove 50/51 dictionary boundaries, cross-page deduplication,
+  restored CRM order, early stop at 3,001 unique deals, and deduplication before
+  the limit decision.
 - Payload tests cover malformed profile, category, stage, user, and deal data.
 - Runtime tests prove top-level mock selection, iframe SDK selection, safe iframe
   failure, and SDK destruction.

@@ -1,7 +1,7 @@
-export type BitrixReadCallMethod =
-  "profile" | "crm.category.list" | "crm.status.list";
+export type BitrixReadCallMethod = "profile" | "crm.category.list";
 
-export type BitrixReadListMethod = "user.get" | "crm.item.list";
+export type BitrixReadListMethod =
+  "user.get" | "crm.item.list" | "crm.status.list";
 
 export interface BitrixListOptions {
   readonly idKey: string;

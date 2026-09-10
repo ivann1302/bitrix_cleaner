@@ -1,5 +1,8 @@
 import { connectB24SdkReadGateway } from "../bitrix/B24SdkReadGateway";
-import type { BitrixReadGateway } from "../bitrix/BitrixReadGateway";
+import {
+  BitrixGatewayError,
+  type BitrixReadGateway,
+} from "../bitrix/BitrixReadGateway";
 import type { BitrixAdapter } from "../deals/data/BitrixAdapter";
 import { BitrixDealReadAdapter } from "../deals/data/BitrixDealReadAdapter";
 import { MockBitrixAdapter } from "../deals/data/MockBitrixAdapter";
@@ -21,13 +24,23 @@ export interface AppRuntimeDependencies {
 }
 
 export class AppRuntimeError extends Error {
-  public readonly code: "sdk-init-failed";
+  public readonly code:
+    "sdk-init-failed" | "bitrix-request-failed" | "invalid-bitrix-response";
 
-  public constructor() {
-    super("sdk-init-failed");
+  public constructor(code: AppRuntimeError["code"] = "sdk-init-failed") {
+    super(code);
     this.name = "AppRuntimeError";
-    this.code = "sdk-init-failed";
+    this.code = code;
   }
+}
+
+function contextErrorCode(
+  error: unknown,
+): "bitrix-request-failed" | "invalid-bitrix-response" {
+  return error instanceof BitrixGatewayError &&
+    error.code === "invalid-bitrix-response"
+    ? "invalid-bitrix-response"
+    : "bitrix-request-failed";
 }
 
 function browserIsEmbedded(): boolean {
@@ -54,19 +67,24 @@ export async function createAppRuntime(
     };
   }
 
-  let gateway: BitrixReadGateway | null = null;
+  let gateway: BitrixReadGateway;
   try {
     gateway = await environment.connect();
+  } catch {
+    throw new AppRuntimeError();
+  }
+
+  try {
     const adapter = new BitrixDealReadAdapter(gateway);
     const context = await adapter.loadContext();
     return {
       mode: "bitrix-readonly",
       adapter,
       context,
-      destroy: () => gateway?.destroy(),
+      destroy: () => gateway.destroy(),
     };
-  } catch {
-    gateway?.destroy();
-    throw new AppRuntimeError();
+  } catch (error) {
+    gateway.destroy();
+    throw new AppRuntimeError(contextErrorCode(error));
   }
 }

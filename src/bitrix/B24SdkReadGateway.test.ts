@@ -5,6 +5,7 @@ import {
   type B24SdkFrameBridge,
 } from "./B24SdkReadGateway";
 import type { BitrixReadCallMethod } from "./BitrixReadGateway";
+import { BitrixDealReadAdapter } from "../deals/data/BitrixDealReadAdapter";
 
 function successfulResponse(result: unknown) {
   return {
@@ -163,5 +164,58 @@ describe("B24SdkReadGateway", () => {
       idKey: "ID",
     });
     expect(destroy).toHaveBeenCalledOnce();
+  });
+
+  it("loads the default category through offset pagination instead of the zero-skipping cursor", async () => {
+    const call = vi.fn((request: { method: string; params: object }) => {
+      if (request.method === "profile") {
+        return Promise.resolve(
+          successfulResponse({
+            ID: "7",
+            ADMIN: true,
+            NAME: "Иван",
+            LAST_NAME: "Петров",
+            PERSONAL_GENDER: "",
+            TIME_ZONE: "Europe/Moscow",
+          }),
+        );
+      }
+      return Promise.resolve(
+        successfulResponse({
+          categories: [{ id: 0, name: "Основная", sort: 100 }],
+        }),
+      );
+    });
+    const fetchList = vi.fn(async function* (request: { method: string }) {
+      await Promise.resolve();
+      if (request.method === "crm.category.list") {
+        throw new Error("cursor starts after category zero");
+      }
+      if (request.method === "crm.status.list") {
+        yield [
+          {
+            STATUS_ID: "LOSE",
+            NAME: "Проиграна",
+            SORT: "100",
+            EXTRA: { SEMANTICS: "failure" },
+          },
+        ];
+      }
+    });
+    const adapter = new BitrixDealReadAdapter(
+      new B24SdkReadGateway(createFrame({ call, fetchList })),
+    );
+
+    await expect(adapter.getDealFilterOptions()).resolves.toMatchObject({
+      pipelines: [{ id: "0", name: "Основная" }],
+      stages: [{ id: "LOSE", pipelineId: "0" }],
+    });
+    expect(call).toHaveBeenCalledWith({
+      method: "crm.category.list",
+      params: { entityTypeId: 2, start: 0 },
+    });
+    expect(fetchList).not.toHaveBeenCalledWith(
+      expect.objectContaining({ method: "crm.category.list" }),
+    );
   });
 });

@@ -138,8 +138,8 @@ it("rejects methods outside the read allowlist", async () => {
 - Consumes: verified test/build output.
 - Produces: truthful project status and a reproducible validation record.
 
-- [ ] **Step 1: Update authoritative plan status, mirror it byte-for-byte, and document the SDK decision, dependency license, automated coverage, and remaining iframe verification**
-- [ ] **Step 2: Run `npm test`, `npm run typecheck`, `npm run lint`, `npm run format:check`, and `npm run build`**
-- [ ] **Step 3: Run PHP syntax checks, root/docs mirror comparisons, and scans for webhook/token/client-secret patterns and forbidden mutating method strings in the real adapter path**
-- [ ] **Step 4: Inspect the production bundle to ensure the official SDK is included and no secrets are present**
-- [ ] **Step 5: Record exact evidence and remaining shared work in `docs/STATUS.md`, then mark this plan complete**
+- [x] **Step 1: Update authoritative plan status, mirror it byte-for-byte, and document the SDK decision, dependency license, automated coverage, and remaining iframe verification**
+- [x] **Step 2: Run `npm test`, `npm run typecheck`, `npm run lint`, `npm run format:check`, and `npm run build`**
+- [x] **Step 3: Run PHP syntax checks, root/docs mirror comparisons, and scans for webhook/token/client-secret patterns and forbidden mutating method strings in the real adapter path**
+- [x] **Step 4: Inspect the production bundle to ensure the official SDK is included and no secrets are present**
+- [x] **Step 5: Record exact evidence and remaining shared work in `docs/STATUS.md`, then mark this plan complete**

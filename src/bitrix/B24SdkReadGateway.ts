@@ -48,12 +48,12 @@ interface InitializableB24Frame {
 
 type FrameInitializer = () => Promise<InitializableB24Frame>;
 
-const CALL_ALLOWLIST = new Set<string>([
-  "profile",
-  "crm.category.list",
+const CALL_ALLOWLIST = new Set<string>(["profile", "crm.category.list"]);
+const LIST_ALLOWLIST = new Set<string>([
+  "user.get",
+  "crm.item.list",
   "crm.status.list",
 ]);
-const LIST_ALLOWLIST = new Set<string>(["user.get", "crm.item.list"]);
 
 function stableRequestError(): BitrixGatewayError {
   return new BitrixGatewayError("bitrix-request-failed");

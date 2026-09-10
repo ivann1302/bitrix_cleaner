@@ -5,6 +5,7 @@ import type {
   BitrixReadGateway,
   BitrixReadListMethod,
 } from "../bitrix/BitrixReadGateway";
+import { BitrixGatewayError } from "../bitrix/BitrixReadGateway";
 import { MockBitrixAdapter } from "../deals/data/MockBitrixAdapter";
 import { BitrixDealReadAdapter } from "../deals/data/BitrixDealReadAdapter";
 import { MOCK_APP_CONTEXT } from "../deals/data/mockContext";
@@ -82,21 +83,21 @@ describe("createAppRuntime", () => {
     expect(gateway.destroy).toHaveBeenCalledOnce();
   });
 
-  it("destroys a connected SDK and exposes only a safe init code on failure", async () => {
-    const gateway = new RuntimeGateway();
-    gateway.call = () => Promise.reject(new Error("access_token=secret"));
+  it.each(["bitrix-request-failed", "invalid-bitrix-response"] as const)(
+    "destroys a connected SDK and preserves the safe %s context code",
+    async (code) => {
+      const gateway = new RuntimeGateway();
+      gateway.call = () => Promise.reject(new BitrixGatewayError(code));
 
-    await expect(
-      createAppRuntime({
-        isEmbedded: () => true,
-        connect: () => Promise.resolve(gateway),
-      }),
-    ).rejects.toMatchObject({
-      code: "sdk-init-failed",
-      message: "sdk-init-failed",
-    });
-    expect(gateway.destroy).toHaveBeenCalledOnce();
-  });
+      await expect(
+        createAppRuntime({
+          isEmbedded: () => true,
+          connect: () => Promise.resolve(gateway),
+        }),
+      ).rejects.toMatchObject({ code, message: code });
+      expect(gateway.destroy).toHaveBeenCalledOnce();
+    },
+  );
 
   it("maps connector rejection to the same safe init code", async () => {
     await expect(

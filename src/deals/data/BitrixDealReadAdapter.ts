@@ -18,6 +18,7 @@ import {
 import type { BitrixAdapter } from "./BitrixAdapter";
 
 const DEAL_ENTITY_TYPE_ID = 2;
+const BITRIX_LIST_PAGE_SIZE = 50;
 const MAX_TIME_ZONE_OFFSET_SECONDS = 14 * 60 * 60;
 
 type UnknownRecord = Readonly<Record<string, unknown>>;
@@ -104,9 +105,17 @@ function parseContext(value: unknown, gateway: BitrixReadGateway): AppContext {
     [firstName, lastName]
       .filter((part): part is string => part !== null)
       .join(" ") || `Пользователь ID ${userId}`;
-  const timeZoneOffsetSeconds = parseTimeZoneOffset(profile.TIME_ZONE_OFFSET);
-  const utcOffset = formatUtcOffset(timeZoneOffsetSeconds);
   const timeZone = parseTimeZone(profile.TIME_ZONE);
+  const hasExplicitOffset =
+    profile.TIME_ZONE_OFFSET !== undefined &&
+    profile.TIME_ZONE_OFFSET !== null &&
+    profile.TIME_ZONE_OFFSET !== "";
+  const timeZoneOffsetSeconds = hasExplicitOffset
+    ? parseTimeZoneOffset(profile.TIME_ZONE_OFFSET)
+    : timeZone === null
+      ? 0
+      : offsetAtInstant(Date.now(), timeZone);
+  const utcOffset = formatUtcOffset(timeZoneOffsetSeconds);
   let portal: string;
   try {
     const url = new URL(gateway.portalOrigin);
@@ -126,12 +135,17 @@ function parseContext(value: unknown, gateway: BitrixReadGateway): AppContext {
     isAdmin: gateway.isAdmin,
     timeZone,
     timeZoneLabel:
-      timeZone === null ? utcOffset : `${timeZone} (сейчас ${utcOffset})`,
+      timeZone !== null
+        ? `${timeZone} (сейчас ${utcOffset})`
+        : hasExplicitOffset
+          ? utcOffset
+          : `Часовой пояс недоступен (используется ${utcOffset})`,
     timeZoneOffsetSeconds,
   };
 }
 
 function offsetAtInstant(timestamp: number, timeZone: string): number {
+  const wholeSecondTimestamp = Math.floor(timestamp / 1000) * 1000;
   const formatter = new Intl.DateTimeFormat("en", {
     timeZone,
     calendar: "gregory",
@@ -146,7 +160,7 @@ function offsetAtInstant(timestamp: number, timeZone: string): number {
   });
   const parts = Object.fromEntries(
     formatter
-      .formatToParts(new Date(timestamp))
+      .formatToParts(new Date(wholeSecondTimestamp))
       .filter((part) => part.type !== "literal")
       .map((part) => [part.type, Number(part.value)]),
   );
@@ -165,7 +179,7 @@ function offsetAtInstant(timestamp: number, timeZone: string): number {
     requiredPart("minute"),
     requiredPart("second"),
   );
-  const offset = Math.round((representedAsUtc - timestamp) / 1000);
+  const offset = Math.round((representedAsUtc - wholeSecondTimestamp) / 1000);
   if (
     !Number.isSafeInteger(offset) ||
     offset % 60 !== 0 ||
@@ -194,17 +208,51 @@ function offsetForLocalEndOfDay(date: string, timeZone: string): number {
   return offsetAtInstant(instant, timeZone);
 }
 
+function parseSort(value: unknown): number {
+  if (value === undefined || value === null || value === "") {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  const sort =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && /^(?:0|[1-9]\d*)$/.test(value)
+        ? Number(value)
+        : Number.NaN;
+  if (!Number.isSafeInteger(sort) || sort < 0) throw invalidResponse();
+  return sort;
+}
+
 function parseCategories(value: unknown): readonly NamedOption[] {
-  const data = asRecord(value);
-  if (!Array.isArray(data.categories)) throw invalidResponse();
+  if (!Array.isArray(value)) throw invalidResponse();
   const seen = new Set<string>();
-  return data.categories.map((entry) => {
+  const categories: Array<{
+    option: NamedOption;
+    sort: number;
+    position: number;
+  }> = [];
+  for (const [position, entry] of value.entries()) {
     const category = asRecord(entry);
     const id = asNumericId(category.id, true);
-    if (seen.has(id)) throw invalidResponse();
+    if (seen.has(id)) continue;
     seen.add(id);
-    return { id, name: asNonEmptyString(category.name) };
-  });
+    categories.push({
+      option: { id, name: asNonEmptyString(category.name) },
+      sort: parseSort(category.sort),
+      position,
+    });
+  }
+  categories.sort((left, right) =>
+    left.sort === right.sort
+      ? left.position - right.position
+      : left.sort - right.sort,
+  );
+  return categories.map(({ option }) => option);
+}
+
+function parseCategoryPage(value: unknown): readonly unknown[] {
+  const result = asRecord(value);
+  if (!Array.isArray(result.categories)) throw invalidResponse();
+  return result.categories;
 }
 
 function isLostStage(stage: UnknownRecord): boolean {
@@ -225,15 +273,34 @@ function parseStages(
   pipelineId: string,
 ): readonly DealStageOption[] {
   if (!Array.isArray(value)) throw invalidResponse();
-  return value.map((entry) => {
+  const seen = new Set<string>();
+  const stages: Array<{
+    option: DealStageOption;
+    sort: number;
+    position: number;
+  }> = [];
+  for (const [position, entry] of value.entries()) {
     const stage = asRecord(entry);
-    return {
-      id: asNonEmptyString(stage.STATUS_ID),
-      name: asNonEmptyString(stage.NAME),
-      pipelineId,
-      isLost: isLostStage(stage),
-    };
-  });
+    const id = asNonEmptyString(stage.STATUS_ID);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    stages.push({
+      option: {
+        id,
+        name: asNonEmptyString(stage.NAME),
+        pipelineId,
+        isLost: isLostStage(stage),
+      },
+      sort: parseSort(stage.SORT),
+      position,
+    });
+  }
+  stages.sort((left, right) =>
+    left.sort === right.sort
+      ? left.position - right.position
+      : left.sort - right.sort,
+  );
+  return stages.map(({ option }) => option);
 }
 
 function parseUser(value: unknown): NamedOption | null {
@@ -253,8 +320,43 @@ function parseUser(value: unknown): NamedOption | null {
 }
 
 function parseIsoDateTime(value: unknown): string {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (typeof value !== "string") {
     throw invalidResponse();
+  }
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-](\d{2}):(\d{2}))$/.exec(
+      value,
+    );
+  if (match === null) throw invalidResponse();
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(year, month - 1, day);
+  calendar.setUTCHours(hour, minute, second, 0);
+  if (
+    calendar.getUTCFullYear() !== year ||
+    calendar.getUTCMonth() !== month - 1 ||
+    calendar.getUTCDate() !== day ||
+    calendar.getUTCHours() !== hour ||
+    calendar.getUTCMinutes() !== minute ||
+    calendar.getUTCSeconds() !== second
+  ) {
+    throw invalidResponse();
+  }
+  if (match[7] !== "Z") {
+    const offsetHour = Number(match[8]);
+    const offsetMinute = Number(match[9]);
+    if (
+      offsetHour > 14 ||
+      offsetMinute > 59 ||
+      (offsetHour === 14 && offsetMinute !== 0)
+    ) {
+      throw invalidResponse();
+    }
   }
   const timestamp = Date.parse(value);
   if (!Number.isFinite(timestamp)) throw invalidResponse();
@@ -440,23 +542,32 @@ export class BitrixDealReadAdapter implements BitrixAdapter {
 
   private async loadFilterOptions(): Promise<DealFilterOptions> {
     const context = await this.loadContext();
-    const pipelines = parseCategories(
-      await this.gateway.call("crm.category.list", {
-        entityTypeId: DEAL_ENTITY_TYPE_ID,
-      }),
-    );
+    const categoryRows: unknown[] = [];
+    for (let start = 0; ; start += BITRIX_LIST_PAGE_SIZE) {
+      const page = parseCategoryPage(
+        await this.gateway.call("crm.category.list", {
+          entityTypeId: DEAL_ENTITY_TYPE_ID,
+          start,
+        }),
+      );
+      categoryRows.push(...page);
+      if (page.length < BITRIX_LIST_PAGE_SIZE) break;
+    }
+    const pipelines = parseCategories(categoryRows);
     const stages: DealStageOption[] = [];
     for (const pipeline of pipelines) {
       const entityId =
         pipeline.id === "0" ? "DEAL_STAGE" : `DEAL_STAGE_${pipeline.id}`;
+      const stageRows: unknown[] = [];
+      for await (const page of this.gateway.fetchList(
+        "crm.status.list",
+        { filter: { ENTITY_ID: entityId } },
+        { idKey: "ID" },
+      )) {
+        stageRows.push(...page);
+      }
       stages.push(
-        ...parseStages(
-          await this.gateway.call("crm.status.list", {
-            order: { SORT: "ASC" },
-            filter: { ENTITY_ID: entityId },
-          }),
-          pipeline.id,
-        ).filter((stage) => stage.isLost),
+        ...parseStages(stageRows, pipeline.id).filter((stage) => stage.isLost),
       );
     }
 

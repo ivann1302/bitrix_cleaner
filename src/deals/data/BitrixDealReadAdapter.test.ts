@@ -9,8 +9,12 @@ import { BitrixDealReadAdapter } from "./BitrixDealReadAdapter";
 import type { DealSearchCriteria } from "../domain/types";
 
 type CallResponses = Partial<Record<BitrixReadCallMethod, unknown>>;
+type ListPages = readonly (readonly unknown[])[];
 type ListResponses = Partial<
-  Record<BitrixReadListMethod, readonly (readonly unknown[])[]>
+  Record<
+    string,
+    ListPages | ((params: Readonly<Record<string, unknown>>) => ListPages)
+  >
 >;
 
 class FakeReadGateway implements BitrixReadGateway {
@@ -39,7 +43,14 @@ class FakeReadGateway implements BitrixReadGateway {
     params: Readonly<Record<string, unknown>> = {},
   ): Promise<unknown> {
     this.calls.push({ method, params });
-    return Promise.resolve(this.callResponses[method]);
+    const response = this.callResponses[method];
+    return Promise.resolve(
+      typeof response === "function"
+        ? (response as (params: Readonly<Record<string, unknown>>) => unknown)(
+            params,
+          )
+        : response,
+    );
   }
 
   public async *fetchList(
@@ -49,7 +60,9 @@ class FakeReadGateway implements BitrixReadGateway {
   ): AsyncIterable<readonly unknown[]> {
     this.lists.push({ method, params, options });
     await Promise.resolve();
-    for (const page of this.listResponses[method] ?? []) yield page;
+    const response = this.listResponses[method];
+    const pages = typeof response === "function" ? response(params) : response;
+    for (const page of pages ?? []) yield page;
   }
 
   public destroy(): void {}
@@ -120,17 +133,20 @@ function createGateway(
     isAdmin?: boolean;
   } = {},
 ): FakeReadGateway {
-  const statusPages = [MAIN_STAGES, REPEAT_STAGES];
-  let statusIndex = 0;
   const callResponses: CallResponses = {
     profile: PROFILE,
     "crm.category.list": CATEGORIES,
-    "crm.status.list": undefined,
     ...overrides.calls,
   };
   const gateway = new FakeReadGateway(
     callResponses,
     {
+      "crm.status.list": (params) => {
+        const filter = params.filter as Record<string, unknown>;
+        return [
+          filter.ENTITY_ID === "DEAL_STAGE" ? MAIN_STAGES : REPEAT_STAGES,
+        ];
+      },
       "user.get": [
         [
           { ID: "10", ACTIVE: true, NAME: "Анна", LAST_NAME: "Смирнова" },
@@ -142,17 +158,6 @@ function createGateway(
     },
     overrides.isAdmin,
   );
-  const originalCall = gateway.call.bind(gateway);
-  gateway.call = (method, params = {}) => {
-    if (
-      method === "crm.status.list" &&
-      overrides.calls?.[method] === undefined
-    ) {
-      gateway.calls.push({ method, params });
-      return Promise.resolve(statusPages[statusIndex++]);
-    }
-    return originalCall(method, params);
-  };
   return gateway;
 }
 
@@ -175,6 +180,50 @@ describe("BitrixDealReadAdapter dictionaries", () => {
     expect(
       gateway.calls.filter(({ method }) => method === "profile"),
     ).toHaveLength(1);
+  });
+
+  it("derives the current UTC offset from the documented profile time zone", async () => {
+    const gateway = createGateway({
+      calls: {
+        profile: {
+          ID: "7",
+          ADMIN: false,
+          NAME: "Иван",
+          LAST_NAME: "Петров",
+          PERSONAL_GENDER: "",
+          TIME_ZONE: "Europe/Moscow",
+        },
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    await expect(adapter.loadContext()).resolves.toMatchObject({
+      timeZone: "Europe/Moscow",
+      timeZoneLabel: "Europe/Moscow (сейчас UTC+03:00)",
+      timeZoneOffsetSeconds: 10800,
+    });
+  });
+
+  it("models the documented empty profile time zone as unavailable UTC", async () => {
+    const gateway = createGateway({
+      calls: {
+        profile: {
+          ID: "7",
+          ADMIN: false,
+          NAME: "Иван",
+          LAST_NAME: "Петров",
+          PERSONAL_GENDER: "",
+          TIME_ZONE: "",
+        },
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    await expect(adapter.loadContext()).resolves.toMatchObject({
+      timeZone: null,
+      timeZoneLabel: "Часовой пояс недоступен (используется UTC+00:00)",
+      timeZoneOffsetSeconds: 0,
+    });
   });
 
   it("loads categories, lost stage semantics, and paged active assignees", async () => {
@@ -210,20 +259,24 @@ describe("BitrixDealReadAdapter dictionaries", () => {
 
     expect(gateway.calls).toEqual([
       { method: "profile", params: {} },
-      { method: "crm.category.list", params: { entityTypeId: 2 } },
+      {
+        method: "crm.category.list",
+        params: { entityTypeId: 2, start: 0 },
+      },
+    ]);
+    expect(gateway.lists).toEqual([
       {
         method: "crm.status.list",
-        params: { order: { SORT: "ASC" }, filter: { ENTITY_ID: "DEAL_STAGE" } },
+        params: { filter: { ENTITY_ID: "DEAL_STAGE" } },
+        options: { idKey: "ID" },
       },
       {
         method: "crm.status.list",
         params: {
-          order: { SORT: "ASC" },
           filter: { ENTITY_ID: "DEAL_STAGE_7" },
         },
+        options: { idKey: "ID" },
       },
-    ]);
-    expect(gateway.lists).toEqual([
       {
         method: "user.get",
         params: {
@@ -233,6 +286,199 @@ describe("BitrixDealReadAdapter dictionaries", () => {
         options: { idKey: "ID" },
       },
     ]);
+  });
+
+  it("loads every paginated stage page", async () => {
+    const gateway = createGateway({
+      lists: {
+        "crm.status.list": (params) => {
+          const filter = params.filter as Record<string, unknown>;
+          return filter.ENTITY_ID === "DEAL_STAGE"
+            ? [[MAIN_STAGES[0]], [MAIN_STAGES[1]]]
+            : [[REPEAT_STAGES[0]], [REPEAT_STAGES[1]]];
+        },
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    await expect(adapter.getDealFilterOptions()).resolves.toMatchObject({
+      pipelines: [
+        { id: "0", name: "Основная" },
+        { id: "7", name: "Повторные продажи" },
+      ],
+      stages: [
+        { id: "LOSE", pipelineId: "0" },
+        { id: "C7:LOSE", pipelineId: "7" },
+        { id: "C7:APOLOGY", pipelineId: "7" },
+      ],
+    });
+  });
+
+  it("loads a lost stage from the 51st status-list position", async () => {
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({
+      ID: String(index + 1),
+      STATUS_ID: `PROCESS_${index + 1}`,
+      NAME: `Рабочая ${index + 1}`,
+      SORT: String((index + 1) * 10),
+      EXTRA: { SEMANTICS: "process" },
+    }));
+    const gateway = createGateway({
+      calls: {
+        "crm.category.list": {
+          categories: [{ id: 0, name: "Основная" }],
+        },
+      },
+      lists: {
+        "crm.status.list": [
+          firstPage,
+          [
+            {
+              ID: "51",
+              STATUS_ID: "LOSE_51",
+              NAME: "Проиграна 51",
+              SORT: "510",
+              EXTRA: { SEMANTICS: "failure" },
+            },
+          ],
+        ],
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    await expect(adapter.getDealFilterOptions()).resolves.toMatchObject({
+      stages: [{ id: "LOSE_51", pipelineId: "0", isLost: true }],
+    });
+  });
+
+  it("loads the 51st category from a second list page", async () => {
+    const categories = Array.from({ length: 51 }, (_, id) => ({
+      id,
+      name: `Воронка ${id}`,
+    }));
+    const gateway = createGateway({
+      calls: {
+        "crm.category.list": (params: Readonly<Record<string, unknown>>) => {
+          const start = Number(params.start);
+          return { categories: categories.slice(start, start + 50) };
+        },
+      },
+      lists: {
+        "crm.status.list": [],
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    const options = await adapter.getDealFilterOptions();
+    expect(options.pipelines).toHaveLength(51);
+    expect(options.pipelines.at(-1)).toEqual({
+      id: "50",
+      name: "Воронка 50",
+    });
+  });
+
+  it("deduplicates a category repeated across list pages", async () => {
+    const firstPage = Array.from({ length: 50 }, (_, id) => ({
+      id,
+      name: `Воронка ${id}`,
+    }));
+    const gateway = createGateway({
+      calls: {
+        "crm.category.list": (params: Readonly<Record<string, unknown>>) => ({
+          categories:
+            params.start === 0 ? firstPage : [{ id: 0, name: "Воронка 0" }],
+        }),
+      },
+      lists: {
+        "crm.status.list": [],
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    const options = await adapter.getDealFilterOptions();
+    expect(options.pipelines).toHaveLength(50);
+    expect(options.pipelines.filter(({ id }) => id === "0")).toHaveLength(1);
+  });
+
+  it("deduplicates a stage repeated across list pages", async () => {
+    const gateway = createGateway({
+      calls: {
+        "crm.category.list": {
+          categories: [{ id: 0, name: "Основная" }],
+        },
+      },
+      lists: {
+        "crm.status.list": [[MAIN_STAGES[1]], [MAIN_STAGES[1]]],
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    await expect(adapter.getDealFilterOptions()).resolves.toMatchObject({
+      stages: [{ id: "LOSE", pipelineId: "0" }],
+    });
+  });
+
+  it("preserves the CRM sort order across status-list pages", async () => {
+    const gateway = createGateway({
+      calls: {
+        "crm.category.list": {
+          categories: [{ id: 0, name: "Основная" }],
+        },
+      },
+      lists: {
+        "crm.status.list": [
+          [
+            {
+              STATUS_ID: "LOSE_LATE",
+              NAME: "Поздняя",
+              SORT: "200",
+              EXTRA: { SEMANTICS: "failure" },
+            },
+          ],
+          [
+            {
+              STATUS_ID: "LOSE_EARLY",
+              NAME: "Ранняя",
+              SORT: "100",
+              EXTRA: { SEMANTICS: "failure" },
+            },
+          ],
+        ],
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    await expect(adapter.getDealFilterOptions()).resolves.toMatchObject({
+      stages: [{ id: "LOSE_EARLY" }, { id: "LOSE_LATE" }],
+    });
+  });
+
+  it("preserves the CRM sort order across category-list pages", async () => {
+    const firstPage = [
+      { id: 0, name: "Поздняя", sort: 200 },
+      ...Array.from({ length: 49 }, (_, index) => ({
+        id: index + 1,
+        name: `Ещё ${index + 1}`,
+        sort: index + 300,
+      })),
+    ];
+    const gateway = createGateway({
+      calls: {
+        "crm.category.list": (params: Readonly<Record<string, unknown>>) => ({
+          categories:
+            params.start === 0
+              ? firstPage
+              : [{ id: 50, name: "Ранняя", sort: 100 }],
+        }),
+      },
+      lists: {
+        "crm.status.list": [],
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    const options = await adapter.getDealFilterOptions();
+    expect(options.pipelines.at(0)).toMatchObject({ id: "50" });
+    expect(options.pipelines.at(1)).toMatchObject({ id: "0" });
   });
 
   it("caches the complete filter dictionary promise", async () => {
@@ -255,15 +501,19 @@ describe("BitrixDealReadAdapter dictionaries", () => {
   it.each([
     ["profile", { ...PROFILE, ID: "" }],
     ["profile offset", { ...PROFILE, TIME_ZONE_OFFSET: "not-a-number" }],
-    ["categories", { categories: [{ id: -1, name: "Некорректная" }] }],
+    ["categories", [{ id: -1, name: "Некорректная" }]],
   ])(
     "rejects malformed %s payloads without guessing",
     async (kind, payload) => {
-      const calls: CallResponses =
+      const gateway =
         kind === "categories"
-          ? { "crm.category.list": payload }
-          : { profile: payload };
-      const adapter = new BitrixDealReadAdapter(createGateway({ calls }));
+          ? createGateway({
+              calls: {
+                "crm.category.list": { categories: payload },
+              },
+            })
+          : createGateway({ calls: { profile: payload } });
+      const adapter = new BitrixDealReadAdapter(gateway);
 
       const request =
         kind === "categories"
@@ -279,18 +529,13 @@ describe("BitrixDealReadAdapter dictionaries", () => {
   it("rejects malformed stage and user rows", async () => {
     const badStage = new BitrixDealReadAdapter(
       createGateway({
-        calls: {
-          "crm.category.list": { categories: [{ id: 0, name: "Основная" }] },
-          "crm.status.list": [{ STATUS_ID: "LOSE", NAME: "" }],
+        lists: {
+          "crm.status.list": [[{ STATUS_ID: "LOSE", NAME: "" }]],
         },
       }),
     );
     const badUser = new BitrixDealReadAdapter(
       createGateway({
-        calls: {
-          "crm.category.list": { categories: [{ id: 0, name: "Основная" }] },
-          "crm.status.list": MAIN_STAGES,
-        },
         lists: { "user.get": [[{ ACTIVE: true, NAME: "Без ID" }]] },
       }),
     );
@@ -440,13 +685,19 @@ describe("BitrixDealReadAdapter search", () => {
   it("does not issue an unfiltered deal request when no lost stage exists", async () => {
     const gateway = createGateway({
       calls: {
-        "crm.category.list": { categories: [{ id: 0, name: "Основная" }] },
+        "crm.category.list": {
+          categories: [{ id: 0, name: "Основная" }],
+        },
+      },
+      lists: {
         "crm.status.list": [
-          {
-            STATUS_ID: "NEW",
-            NAME: "Новая",
-            EXTRA: { SEMANTICS: "process" },
-          },
+          [
+            {
+              STATUS_ID: "NEW",
+              NAME: "Новая",
+              EXTRA: { SEMANTICS: "process" },
+            },
+          ],
         ],
       },
     });
@@ -515,13 +766,14 @@ describe("BitrixDealReadAdapter search", () => {
     let pagesRequested = 0;
     let generatorClosed = false;
     const base = createGateway();
+    const fetchDictionaryList = base.fetchList.bind(base);
     base.fetchList = async function* (method, params, options) {
-      this.lists.push({ method, params, options });
-      await Promise.resolve();
-      if (method === "user.get") {
-        yield [{ ID: "10", ACTIVE: true, NAME: "Анна", LAST_NAME: "Смирнова" }];
+      if (method !== "crm.item.list") {
+        yield* fetchDictionaryList(method, params, options);
         return;
       }
+      this.lists.push({ method, params, options });
+      await Promise.resolve();
       try {
         for (let page = 0; page < 100; page += 1) {
           pagesRequested += 1;
@@ -551,14 +803,20 @@ describe("BitrixDealReadAdapter search", () => {
       }),
     );
     const requestFailureGateway = createGateway();
+    const fetchRequestFailureDictionary = requestFailureGateway.fetchList.bind(
+      requestFailureGateway,
+    );
     requestFailureGateway.fetchList = async function* (
       method,
       params,
       options,
     ) {
+      if (method !== "crm.item.list") {
+        yield* fetchRequestFailureDictionary(method, params, options);
+        return;
+      }
       this.lists.push({ method, params, options });
       await Promise.resolve();
-      if (method === "user.get") return;
       throw new Error("access_token=secret");
     };
     const requestFailure = new BitrixDealReadAdapter(requestFailureGateway);
@@ -573,6 +831,26 @@ describe("BitrixDealReadAdapter search", () => {
     await expect(requestFailure.searchDeals(BASE_CRITERIA)).resolves.toEqual({
       kind: "failure",
       code: "bitrix-request-failed",
+    });
+  });
+
+  it.each([
+    "1",
+    "2026-01-10",
+    "2026-01-10T12:00:00",
+    "2026-02-30T12:00:00+03:00",
+  ])("rejects malformed CRM datetime %s", async (createdTime) => {
+    const adapter = new BitrixDealReadAdapter(
+      createGateway({
+        lists: {
+          "crm.item.list": [[rawDeal(1, { createdTime })]],
+        },
+      }),
+    );
+
+    await expect(adapter.searchDeals(BASE_CRITERIA)).resolves.toEqual({
+      kind: "failure",
+      code: "invalid-bitrix-response",
     });
   });
 });
