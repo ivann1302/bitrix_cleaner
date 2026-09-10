@@ -16,6 +16,7 @@ const snapshot: SelectionSnapshot = {
   selectionVersion: 0,
   collectedAt: 1000,
   criteria: {
+    entity: "deal",
     dateField: "createdAt",
     beforeDate: "2026-01-31",
     pipelineId: null,

@@ -1,5 +1,9 @@
 import { deduplicateDeals, isDealSearchOverLimit } from "../domain/dealSearch";
 import type {
+  CrmEntity,
+  CrmFilterOptions,
+  CrmSearchCriteria,
+  CrmSearchResult,
   Deal,
   DealFilterOptions,
   DealSearchCriteria,
@@ -39,6 +43,7 @@ function wait(milliseconds: number): Promise<void> {
 }
 
 export class MockBitrixAdapter implements BitrixAdapter, DeleteTransport {
+  public readonly supportedEntities = ["deal"] as const;
   private readonly deals: readonly Deal[];
   private readonly options: DealFilterOptions;
   private readonly behavior: MockBitrixAdapterBehavior;
@@ -48,6 +53,14 @@ export class MockBitrixAdapter implements BitrixAdapter, DeleteTransport {
     this.deals = config.deals ?? MOCK_DEALS;
     this.options = config.options ?? MOCK_FILTER_OPTIONS;
     this.behavior = config.behavior ?? {};
+  }
+
+  public getFilterOptions(entity: CrmEntity): Promise<CrmFilterOptions> {
+    if (entity !== "deal") return Promise.reject(new Error("unsupported-entity"));
+    return Promise.resolve({
+      ...this.options,
+      stages: this.options.stages.filter((stage) => stage.isLost),
+    });
   }
 
   public getDealFilterOptions(): Promise<DealFilterOptions> {
@@ -78,9 +91,8 @@ export class MockBitrixAdapter implements BitrixAdapter, DeleteTransport {
     return { kind: "deleted" };
   }
 
-  public async searchDeals(
-    criteria: DealSearchCriteria,
-  ): Promise<DealSearchResult> {
+  public async search(criteria: CrmSearchCriteria): Promise<CrmSearchResult> {
+    if (criteria.entity !== "deal") throw new Error("unsupported-entity");
     const configuredDelay = this.behavior.delayMs ?? 0;
     const delay =
       typeof configuredDelay === "function"
@@ -135,5 +147,9 @@ export class MockBitrixAdapter implements BitrixAdapter, DeleteTransport {
       return { kind: "empty" };
     }
     return { kind: "success", items: matches };
+  }
+
+  public searchDeals(criteria: DealSearchCriteria): Promise<DealSearchResult> {
+    return this.search(criteria) as Promise<DealSearchResult>;
   }
 }

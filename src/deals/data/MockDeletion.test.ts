@@ -4,6 +4,7 @@ import { MockBitrixAdapter } from "./MockBitrixAdapter";
 import { MOCK_CONTEXT } from "./mockContext";
 
 const criteria = {
+  entity: "deal" as const,
   dateField: "createdAt" as const,
   beforeDate: "2026-01-31",
   pipelineId: null,

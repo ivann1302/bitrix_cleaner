@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { createDeal } from "../../test/dealFixtures";
 import type { DealSearchCriteria } from "../domain/types";
-import { INITIAL_DEAL_SEARCH_STATE, dealSearchReducer } from "./searchState";
+import {
+  INITIAL_CRM_SEARCH_STATE,
+  crmSearchReducer,
+  dealSearchReducer,
+  INITIAL_DEAL_SEARCH_STATE,
+} from "./searchState";
 
 const criteria: DealSearchCriteria = {
+  entity: "deal",
   dateField: "createdAt",
   beforeDate: "2026-01-31",
   pipelineId: null,
@@ -28,6 +34,19 @@ function readyState() {
 }
 
 describe("dealSearchReducer", () => {
+  it("reset возвращает CRM-поиск к initial", () => {
+    const loading = crmSearchReducer(INITIAL_CRM_SEARCH_STATE, {
+      type: "started",
+      revision: 1,
+      criteria: { ...criteria, entity: "deal" },
+    });
+
+    expect(crmSearchReducer(loading, { type: "reset" })).toEqual({
+      kind: "initial",
+      revision: 0,
+    });
+  });
+
   it("переходит initial → loading → ready", () => {
     const loading = dealSearchReducer(INITIAL_DEAL_SEARCH_STATE, {
       type: "started",

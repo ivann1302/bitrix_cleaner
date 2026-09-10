@@ -4,6 +4,10 @@ import {
 } from "../../bitrix/BitrixReadGateway";
 import type {
   AppContext,
+  CrmEntity,
+  CrmFilterOptions,
+  CrmSearchCriteria,
+  CrmSearchResult,
   Deal,
   DealFilterOptions,
   DealSearchCriteria,
@@ -376,8 +380,11 @@ function parseDeal(value: unknown, options: DealFilterOptions): Deal {
   if (pipeline === undefined || stage === undefined) throw invalidResponse();
   const assignee = options.assignees.find((entry) => entry.id === assignedById);
   return {
+    entity: "deal",
     id,
     title: asNonEmptyString(item.title),
+    statusId: stageId,
+    statusName: stage.name,
     pipelineId,
     pipelineName: pipeline.name,
     stageId,
@@ -394,6 +401,7 @@ function validateCriteria(
   options: DealFilterOptions,
 ): void {
   const validation = validateDealSearchDraft({
+    entity: "deal",
     dateField: criteria.dateField,
     beforeDate: criteria.beforeDate ?? "",
     pipelineId: criteria.pipelineId ?? "",
@@ -474,6 +482,7 @@ function searchFailureCode(error: unknown): string {
 }
 
 export class BitrixDealReadAdapter implements BitrixAdapter {
+  public readonly supportedEntities = ["deal"] as const;
   private contextPromise: Promise<AppContext> | null = null;
   private optionsPromise: Promise<DealFilterOptions> | null = null;
 
@@ -486,14 +495,18 @@ export class BitrixDealReadAdapter implements BitrixAdapter {
     return this.contextPromise;
   }
 
-  public getDealFilterOptions(): Promise<DealFilterOptions> {
+  public getFilterOptions(entity: CrmEntity): Promise<CrmFilterOptions> {
+    if (entity !== "deal") return Promise.reject(new Error("unsupported-entity"));
     this.optionsPromise ??= this.loadFilterOptions();
     return this.optionsPromise;
   }
 
-  public async searchDeals(
-    criteria: DealSearchCriteria,
-  ): Promise<DealSearchResult> {
+  public getDealFilterOptions(): Promise<DealFilterOptions> {
+    return this.getFilterOptions("deal") as Promise<DealFilterOptions>;
+  }
+
+  public async search(criteria: CrmSearchCriteria): Promise<CrmSearchResult> {
+    if (criteria.entity !== "deal") throw new Error("unsupported-entity");
     try {
       const context = await this.loadContext();
       const options = await this.getDealFilterOptions();
@@ -538,6 +551,10 @@ export class BitrixDealReadAdapter implements BitrixAdapter {
     } catch (error) {
       return { kind: "failure", code: searchFailureCode(error) };
     }
+  }
+
+  public searchDeals(criteria: DealSearchCriteria): Promise<DealSearchResult> {
+    return this.search(criteria) as Promise<DealSearchResult>;
   }
 
   private async loadFilterOptions(): Promise<DealFilterOptions> {
@@ -591,6 +608,7 @@ export class BitrixDealReadAdapter implements BitrixAdapter {
     }
 
     return {
+      entity: "deal",
       pipelines,
       stages,
       assignees,

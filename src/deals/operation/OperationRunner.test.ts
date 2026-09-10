@@ -28,6 +28,7 @@ function fixture(ids = ["1", "2"], retainHistory = true) {
         isAdmin: true,
       },
       criteria: {
+        entity: "deal",
         dateField: "createdAt",
         beforeDate: "2026-01-01",
         pipelineId: null,

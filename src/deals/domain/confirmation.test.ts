@@ -9,6 +9,7 @@ import type { DealSearchCriteria } from "./types";
 
 const now = 1_000_000;
 const criteria: DealSearchCriteria = {
+  entity: "deal",
   dateField: "createdAt",
   beforeDate: "2026-01-01",
   pipelineId: null,

@@ -54,6 +54,7 @@ function isValidSelection(snapshot: SelectionSnapshot, now: number): boolean {
     (criteria.dateField === "createdAt" ||
       criteria.dateField === "updatedAt") &&
     validateDealSearchDraft({
+      entity: "deal",
       dateField: criteria.dateField,
       beforeDate: criteria.beforeDate ?? "",
       pipelineId: criteria.pipelineId ?? "",

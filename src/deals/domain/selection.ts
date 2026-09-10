@@ -1,4 +1,4 @@
-import type { Deal } from "./types";
+import type { CrmItem } from "./types";
 
 export interface SelectionCounts {
   readonly found: number;
@@ -20,7 +20,7 @@ export function toggleExcludedId(
 }
 
 export function getSelectedDealIds(
-  deals: readonly Deal[],
+  deals: readonly CrmItem[],
   excludedIds: ReadonlySet<string>,
 ): readonly string[] {
   return deals
@@ -29,7 +29,7 @@ export function getSelectedDealIds(
 }
 
 export function getSelectionCounts(
-  deals: readonly Deal[],
+  deals: readonly CrmItem[],
   excludedIds: ReadonlySet<string>,
 ): SelectionCounts {
   const excluded = deals.reduce(

@@ -3,11 +3,12 @@ import type { BitrixAdapter } from "../deals/data/BitrixAdapter";
 import { MockBitrixAdapter } from "../deals/data/MockBitrixAdapter";
 import {
   criteriaSignature,
-  normalizeDealSearchDraft,
-  validateDealSearchDraft,
+  normalizeCrmSearchDraft,
+  validateCrmSearchDraft,
 } from "../deals/domain/dealSearch";
 import type {
   DealFilterOptions,
+  DealSearchCriteria,
   DealSearchDraft,
   DealSearchValidationErrors,
 } from "../deals/domain/types";
@@ -36,6 +37,7 @@ const defaultOperationServices: OperationServices = {
   lock: new BrowserOperationLock(),
 };
 const INITIAL_DRAFT: DealSearchDraft = {
+  entity: "deal",
   dateField: "createdAt",
   beforeDate: "",
   pipelineId: "",
@@ -70,13 +72,15 @@ export function App({
   const [draftVersion, setDraftVersion] = useState(0);
   const previewIsStale =
     state.kind === "ready" &&
-    criteriaSignature(normalizeDealSearchDraft(draft)) !==
+    criteriaSignature(normalizeCrmSearchDraft(draft)) !==
       criteriaSignature(state.criteria);
   const snapshot =
-    state.kind === "ready" && !previewIsStale
+    state.kind === "ready" && state.criteria.entity === "deal" && !previewIsStale
       ? createSelectionSnapshot(
           {
             ...state,
+            criteria: state.criteria as DealSearchCriteria,
+            items: state.items.filter((item) => item.entity === "deal"),
             context: {
               portal: context.portal,
               userId: context.userId,
@@ -94,9 +98,9 @@ export function App({
 
   useEffect(() => {
     let active = true;
-    void adapter.getDealFilterOptions().then(
+    void adapter.getFilterOptions("deal").then(
       (value) => {
-        if (active) setOptionsState({ kind: "ready", value });
+        if (active && value.entity === "deal") setOptionsState({ kind: "ready", value });
       },
       () => {
         if (active) setOptionsState({ kind: "failure" });
@@ -109,7 +113,7 @@ export function App({
 
   function submit(): void {
     if (operation.busy) return;
-    const validation = validateDealSearchDraft(draft);
+    const validation = validateCrmSearchDraft(draft);
     if (!validation.ok) {
       setErrors({
         ...validation.fieldErrors,
@@ -177,7 +181,7 @@ export function App({
           </p>
         )}
         <SearchFeedback state={state} mode={mode} />
-        {state.kind === "ready" && optionsState.kind === "ready" && (
+        {state.kind === "ready" && state.criteria.entity === "deal" && optionsState.kind === "ready" && (
           <>
             <fieldset className="operation-fieldset" disabled={operation.busy}>
               <DealPreview

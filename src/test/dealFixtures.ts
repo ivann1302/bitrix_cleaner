@@ -2,8 +2,11 @@ import type { Deal, DealFilterOptions } from "../deals/domain/types";
 
 export function createDeal(overrides: Partial<Deal> = {}): Deal {
   return {
+    entity: "deal",
     id: "1",
     title: "Тестовая сделка",
+    statusId: "main-lost",
+    statusName: "Проиграна",
     pipelineId: "main",
     pipelineName: "Основная",
     stageId: "main-lost",
@@ -17,6 +20,7 @@ export function createDeal(overrides: Partial<Deal> = {}): Deal {
 }
 
 export const TEST_FILTER_OPTIONS: DealFilterOptions = {
+  entity: "deal",
   pipelines: [{ id: "main", name: "Основная" }],
   stages: [
     { id: "main-lost", name: "Проиграна", pipelineId: "main", isLost: true },

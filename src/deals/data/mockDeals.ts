@@ -1,6 +1,7 @@
 import type { Deal, DealFilterOptions } from "../domain/types";
 
 export const MOCK_FILTER_OPTIONS: DealFilterOptions = {
+  entity: "deal",
   pipelines: [
     { id: "main", name: "Основная" },
     { id: "repeat", name: "Повторные продажи" },
@@ -24,8 +25,11 @@ export const MOCK_FILTER_OPTIONS: DealFilterOptions = {
 
 const CORE_DEALS: readonly Deal[] = [
   {
+    entity: "deal",
     id: "101",
     title: "Поставка оборудования",
+    statusId: "main-lost",
+    statusName: "Проиграна",
     pipelineId: "main",
     pipelineName: "Основная",
     stageId: "main-lost",
@@ -36,8 +40,11 @@ const CORE_DEALS: readonly Deal[] = [
     updatedAt: "2026-01-19T12:30:00.000Z",
   },
   {
+    entity: "deal",
     id: "102",
     title: "Продление сопровождения",
+    statusId: "repeat-lost",
+    statusName: "Не состоялась",
     pipelineId: "repeat",
     pipelineName: "Повторные продажи",
     stageId: "repeat-lost",
@@ -48,8 +55,11 @@ const CORE_DEALS: readonly Deal[] = [
     updatedAt: "2026-04-03T14:15:00.000Z",
   },
   {
+    entity: "deal",
     id: "103",
     title: "Пилот CRM",
+    statusId: "main-active",
+    statusName: "В работе",
     pipelineId: "main",
     pipelineName: "Основная",
     stageId: "main-active",
@@ -79,8 +89,11 @@ function createDemoDeal(index: number): Deal {
       : "Проиграна";
 
   return {
+    entity: "deal",
     id: String(200 + index),
     title: `Демо-сделка ${index}`,
+    statusId: stageId,
+    statusName: stageName,
     pipelineId,
     pipelineName,
     stageId,

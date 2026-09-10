@@ -1,56 +1,54 @@
 import { toggleExcludedId } from "../domain/selection";
 import type {
-  Deal,
-  DealSearchCriteria,
-  DealSearchResult,
+  CrmItem,
+  CrmSearchCriteria,
+  CrmSearchResult,
 } from "../domain/types";
 
 interface RevisionState {
   readonly revision: number;
-  readonly criteria: DealSearchCriteria;
+  readonly criteria: CrmSearchCriteria;
 }
 
-export type DealSearchState =
+export type CrmSearchState =
   | { readonly kind: "initial"; readonly revision: 0 }
   | ({ readonly kind: "loading" } & RevisionState)
   | ({
       readonly kind: "ready";
-      readonly items: readonly Deal[];
+      readonly items: readonly CrmItem[];
       readonly excludedIds: ReadonlySet<string>;
       readonly collectedAt: number;
       readonly selectionVersion: number;
     } & RevisionState)
   | ({ readonly kind: "empty" } & RevisionState)
-  | ({
-      readonly kind: "over-limit";
-      readonly matchedAtLeast: number;
-    } & RevisionState)
+  | ({ readonly kind: "over-limit"; readonly matchedAtLeast: number } & RevisionState)
   | ({ readonly kind: "failure"; readonly code: string } & RevisionState);
 
-export const INITIAL_DEAL_SEARCH_STATE: DealSearchState = {
+export const INITIAL_CRM_SEARCH_STATE: CrmSearchState = {
   kind: "initial",
   revision: 0,
 };
 
-export type DealSearchAction =
+export type CrmSearchAction =
   | {
       readonly type: "started";
       readonly revision: number;
-      readonly criteria: DealSearchCriteria;
+      readonly criteria: CrmSearchCriteria;
     }
   | {
       readonly type: "resolved";
       readonly revision: number;
-      readonly result: DealSearchResult;
+      readonly result: CrmSearchResult;
       readonly collectedAt: number;
     }
-  | { readonly type: "toggle-excluded"; readonly id: string };
+  | { readonly type: "toggle-excluded"; readonly id: string }
+  | { readonly type: "reset" };
 
 function resolvedState(
-  state: Extract<DealSearchState, { kind: "loading" }>,
-  result: DealSearchResult,
+  state: Extract<CrmSearchState, { kind: "loading" }>,
+  result: CrmSearchResult,
   collectedAt: number,
-): DealSearchState {
+): CrmSearchState {
   const base = { revision: state.revision, criteria: state.criteria };
   switch (result.kind) {
     case "success":
@@ -77,10 +75,10 @@ function resolvedState(
   }
 }
 
-export function dealSearchReducer(
-  state: DealSearchState,
-  action: DealSearchAction,
-): DealSearchState {
+export function crmSearchReducer(
+  state: CrmSearchState,
+  action: CrmSearchAction,
+): CrmSearchState {
   switch (action.type) {
     case "started":
       return {
@@ -96,7 +94,7 @@ export function dealSearchReducer(
     case "toggle-excluded":
       if (
         state.kind !== "ready" ||
-        !state.items.some((deal) => deal.id === action.id)
+        !state.items.some((item) => item.id === action.id)
       ) {
         return state;
       }
@@ -105,5 +103,12 @@ export function dealSearchReducer(
         excludedIds: toggleExcludedId(state.excludedIds, action.id),
         selectionVersion: state.selectionVersion + 1,
       };
+    case "reset":
+      return INITIAL_CRM_SEARCH_STATE;
   }
 }
+
+export type DealSearchState = CrmSearchState;
+export type DealSearchAction = CrmSearchAction;
+export const INITIAL_DEAL_SEARCH_STATE = INITIAL_CRM_SEARCH_STATE;
+export const dealSearchReducer = crmSearchReducer;

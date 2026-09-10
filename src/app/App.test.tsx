@@ -9,8 +9,9 @@ import { App } from "./App";
 
 function adapterWith(result: DealSearchResult): BitrixAdapter {
   return {
-    getDealFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
-    searchDeals: () => Promise.resolve(result),
+    supportedEntities: ["deal"],
+    getFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
+    search: () => Promise.resolve(result),
   };
 }
 
@@ -23,8 +24,9 @@ describe("App", () => {
     render(
       <App
         adapter={{
-          getDealFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
-          searchDeals,
+          supportedEntities: ["deal"],
+          getFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
+          search: searchDeals,
         }}
       />,
     );
@@ -54,8 +56,9 @@ describe("App", () => {
     render(
       <App
         adapter={{
-          getDealFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
-          searchDeals,
+          supportedEntities: ["deal"],
+          getFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
+          search: searchDeals,
         }}
       />,
     );
@@ -79,8 +82,9 @@ describe("App", () => {
       <StrictMode>
         <App
           adapter={{
-            getDealFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
-            searchDeals,
+            supportedEntities: ["deal"],
+            getFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
+            search: searchDeals,
           }}
         />
       </StrictMode>,
@@ -111,8 +115,9 @@ describe("App", () => {
     render(
       <App
         adapter={{
-          getDealFilterOptions: () => Promise.resolve(options),
-          searchDeals: () => Promise.resolve({ kind: "empty" }),
+          supportedEntities: ["deal"],
+          getFilterOptions: () => Promise.resolve(options),
+          search: () => Promise.resolve({ kind: "empty" }),
         }}
       />,
     );
@@ -171,8 +176,9 @@ describe("App", () => {
     const user = userEvent.setup();
     let resolveSearch: ((value: DealSearchResult) => void) | undefined;
     const adapter: BitrixAdapter = {
-      getDealFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
-      searchDeals() {
+      supportedEntities: ["deal"],
+      getFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
+      search() {
         return new Promise((resolve) => {
           resolveSearch = resolve;
         });
@@ -208,8 +214,9 @@ describe("App", () => {
     render(
       <App
         adapter={{
-          getDealFilterOptions: () => Promise.reject(new Error("offline")),
-          searchDeals: () => Promise.resolve({ kind: "empty" }),
+          supportedEntities: ["deal"],
+          getFilterOptions: () => Promise.reject(new Error("offline")),
+          search: () => Promise.resolve({ kind: "empty" }),
         }}
       />,
     );
@@ -243,8 +250,9 @@ describe("App", () => {
     render(
       <App
         adapter={{
-          getDealFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
-          searchDeals: () => new Promise<DealSearchResult>(() => {}),
+          supportedEntities: ["deal"],
+          getFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
+          search: () => new Promise<DealSearchResult>(() => {}),
         }}
         context={context}
         mode="bitrix-readonly"
@@ -278,8 +286,9 @@ describe("App", () => {
     render(
       <App
         adapter={{
-          getDealFilterOptions: () => Promise.reject(new Error("secret")),
-          searchDeals: () => Promise.resolve({ kind: "empty" }),
+          supportedEntities: ["deal"],
+          getFilterOptions: () => Promise.reject(new Error("secret")),
+          search: () => Promise.resolve({ kind: "empty" }),
         }}
         context={context}
         mode="bitrix-readonly"

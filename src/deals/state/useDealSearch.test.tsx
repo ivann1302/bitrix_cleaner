@@ -2,8 +2,12 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createDeal, TEST_FILTER_OPTIONS } from "../../test/dealFixtures";
 import type { BitrixAdapter } from "../data/BitrixAdapter";
-import type { DealSearchCriteria, DealSearchResult } from "../domain/types";
-import { useDealSearch } from "./useDealSearch";
+import type {
+  CrmSearchResult,
+  DealSearchCriteria,
+  DealSearchResult,
+} from "../domain/types";
+import { useCrmSearch, useDealSearch } from "./useDealSearch";
 
 function deferred<T>() {
   let settle: ((value: T) => void) | undefined;
@@ -21,6 +25,7 @@ function deferred<T>() {
 }
 
 const firstCriteria: DealSearchCriteria = {
+  entity: "deal",
   dateField: "createdAt",
   beforeDate: "2026-01-31",
   pipelineId: null,
@@ -28,16 +33,56 @@ const firstCriteria: DealSearchCriteria = {
   assignedById: null,
 };
 
-function adapterWith(searchDeals: BitrixAdapter["searchDeals"]): BitrixAdapter {
+function adapterWith(search: BitrixAdapter["search"]): BitrixAdapter {
   return {
-    getDealFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
-    searchDeals,
+    supportedEntities: ["deal"],
+    getFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
+    search,
   };
 }
 
 describe("useDealSearch", () => {
+  it("не принимает старый ответ лида после нового поиска сделок", async () => {
+    const lead = deferred<CrmSearchResult>();
+    const deal = deferred<CrmSearchResult>();
+    let call = 0;
+    const adapter: BitrixAdapter = {
+      supportedEntities: ["deal"],
+      getFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
+      search: () => {
+        call += 1;
+        return call === 1 ? lead.promise : deal.promise;
+      },
+    };
+    const { result } = renderHook(() => useCrmSearch(adapter));
+    const leadRun = result.current.search({
+      entity: "lead",
+      dateField: "createdAt",
+      beforeDate: "2026-01-31",
+      statusId: "JUNK",
+      assignedById: null,
+    });
+    const dealRun = result.current.search({ ...firstCriteria, entity: "deal" });
+
+    await act(async () => {
+      deal.resolve({ kind: "success", items: [createDeal({ id: "new" })] });
+      await dealRun;
+    });
+    await act(async () => {
+      lead.resolve({ kind: "empty" });
+      await leadRun;
+    });
+
+    expect(result.current.state).toMatchObject({
+      kind: "ready",
+      revision: 2,
+      criteria: { entity: "deal" },
+      items: [expect.objectContaining({ id: "new" })],
+    });
+  });
+
   it("не запускает поиск при начальном рендере", () => {
-    const searchDeals = vi.fn<BitrixAdapter["searchDeals"]>();
+    const searchDeals = vi.fn<BitrixAdapter["search"]>();
     const { result } = renderHook(() =>
       useDealSearch(adapterWith(searchDeals)),
     );

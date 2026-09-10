@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 import { getSelectionCounts } from "../domain/selection";
-import type { AppContext, Deal, DealFilterOptions } from "../domain/types";
+import type {
+  AppContext,
+  Deal,
+  DealFilterOptions,
+  DealSearchCriteria,
+} from "../domain/types";
 import type { DealSearchState } from "../state/searchState";
 import type { AppMode } from "../../app/runtime";
 import { CriteriaSummary } from "./CriteriaSummary";
@@ -44,7 +49,8 @@ export function DealPreview({
   const [page, setPage] = useState(1);
   const pageCount = getPreviewPageCount(state.items.length);
   const currentPage = Math.min(page, pageCount);
-  const rows = getPreviewPageItems(state.items, currentPage);
+  const deals = state.items.filter((item): item is Deal => item.entity === "deal");
+  const rows = getPreviewPageItems(deals, currentPage);
   const counts = getSelectionCounts(state.items, state.excludedIds);
   const dateFormatter = useMemo(
     () =>
@@ -188,11 +194,11 @@ export function DealPreview({
           </div>
         </dl>
         <CriteriaSummary
-          draft={state.criteria}
+          draft={state.criteria as DealSearchCriteria}
           options={options}
           title="Условия сохранённого поиска"
         />
-        <DealCsvExport items={state.items} excludedIds={state.excludedIds} />
+        <DealCsvExport items={deals} excludedIds={state.excludedIds} />
         <p className="demo-note">
           {mode === "demo"
             ? "Это локальный preview искусственных данных. Запросов к Bitrix24 нет."

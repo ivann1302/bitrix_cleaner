@@ -42,6 +42,7 @@ describe("DealCsvExport", () => {
           collectedAt: Date.now(),
           selectionVersion: 1,
           criteria: {
+            entity: "deal",
             dateField: "createdAt",
             beforeDate: "2026-01-31",
             pipelineId: null,

@@ -5,6 +5,7 @@ import { MockBitrixAdapter } from "./MockBitrixAdapter";
 import { MOCK_FILTER_OPTIONS } from "./mockDeals";
 
 const baseCriteria: DealSearchCriteria = {
+  entity: "deal",
   dateField: "createdAt",
   beforeDate: "2026-01-31",
   pipelineId: null,

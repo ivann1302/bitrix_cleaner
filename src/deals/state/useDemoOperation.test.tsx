@@ -30,6 +30,7 @@ function selection(revision = 1) {
       revision,
       selectionVersion: 0,
       criteria: {
+        entity: "deal",
         dateField: "createdAt",
         beforeDate: "2026-01-01",
         pipelineId: null,

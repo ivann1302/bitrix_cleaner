@@ -106,6 +106,7 @@ const REPEAT_STAGES = [
 ];
 
 const BASE_CRITERIA: DealSearchCriteria = {
+  entity: "deal",
   dateField: "createdAt",
   beforeDate: "2026-01-31",
   pipelineId: null,
@@ -231,6 +232,7 @@ describe("BitrixDealReadAdapter dictionaries", () => {
     const adapter = new BitrixDealReadAdapter(gateway);
 
     await expect(adapter.getDealFilterOptions()).resolves.toEqual({
+      entity: "deal",
       pipelines: [
         { id: "0", name: "Основная" },
         { id: "7", name: "Повторные продажи" },
@@ -560,8 +562,11 @@ describe("BitrixDealReadAdapter search", () => {
       kind: "success",
       items: [
         {
+          entity: "deal",
           id: "501",
           title: "Сделка 501",
+          statusId: "LOSE",
+          statusName: "Проиграна",
           pipelineId: "0",
           pipelineName: "Основная",
           stageId: "LOSE",

@@ -1,10 +1,12 @@
 import type {
-  DealFilterOptions,
-  DealSearchCriteria,
-  DealSearchResult,
+  CrmEntity,
+  CrmFilterOptions,
+  CrmSearchCriteria,
+  CrmSearchResult,
 } from "../domain/types";
 
 export interface BitrixAdapter {
-  getDealFilterOptions(): Promise<DealFilterOptions>;
-  searchDeals(criteria: DealSearchCriteria): Promise<DealSearchResult>;
+  readonly supportedEntities: readonly CrmEntity[];
+  getFilterOptions(entity: CrmEntity): Promise<CrmFilterOptions>;
+  search(criteria: CrmSearchCriteria): Promise<CrmSearchResult>;
 }
