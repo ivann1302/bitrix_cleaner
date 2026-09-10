@@ -13,6 +13,7 @@ import type {
 } from "../deals/domain/types";
 import { useDealSearch } from "../deals/state/useDealSearch";
 import { DealFilters } from "../deals/ui/DealFilters";
+import { DealPreview } from "../deals/ui/DealPreview";
 import { SearchFeedback } from "../deals/ui/SearchFeedback";
 
 const defaultAdapter = new MockBitrixAdapter({ behavior: { delayMs: 350 } });
@@ -39,7 +40,7 @@ export function App({ adapter = defaultAdapter }: AppProps) {
   const [optionsState, setOptionsState] = useState<OptionsState>({
     kind: "loading",
   });
-  const { state, search } = useDealSearch(adapter);
+  const { state, search, toggleExcluded } = useDealSearch(adapter);
 
   useEffect(() => {
     let active = true;
@@ -112,6 +113,14 @@ export function App({ adapter = defaultAdapter }: AppProps) {
           </p>
         )}
         <SearchFeedback state={state} />
+        {state.kind === "ready" && optionsState.kind === "ready" && (
+          <DealPreview
+            key={state.revision}
+            state={state}
+            options={optionsState.value}
+            onToggleExcluded={toggleExcluded}
+          />
+        )}
       </section>
     </main>
   );

@@ -212,4 +212,69 @@ describe("App", () => {
       screen.queryByRole("button", { name: /удалить/i }),
     ).not.toBeInTheDocument();
   });
+
+  it("связывает готовый результат с исключением без удаления", async () => {
+    const user = userEvent.setup();
+    render(
+      <App adapter={adapterWith({ kind: "success", items: [createDeal()] })} />,
+    );
+
+    await user.type(await screen.findByLabelText("Дата до"), "2026-01-31");
+    await user.click(screen.getByRole("button", { name: "Найти сделки" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Исключить Тестовая сделка" }),
+    );
+
+    expect(
+      screen.getByRole("group", { name: "Исключено 1" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Вернуть Тестовая сделка" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /удалить/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps saved-result criteria independent from the live draft", async () => {
+    const user = userEvent.setup();
+    render(
+      <App adapter={adapterWith({ kind: "success", items: [createDeal()] })} />,
+    );
+
+    const date = await screen.findByLabelText("Дата до");
+    await user.type(date, "2026-01-31");
+    await user.click(screen.getByRole("button", { name: "Найти сделки" }));
+    await screen.findByRole("heading", { name: "Условия сохранённого поиска" });
+    await user.clear(date);
+    await user.type(date, "2026-02-28");
+
+    expect(
+      screen.getByRole("complementary", {
+        name: "Условия сохранённого поиска",
+      }),
+    ).toHaveTextContent("до 2026-01-31");
+  });
+
+  it("resets preview pagination for a new search revision", async () => {
+    const user = userEvent.setup();
+    const items = Array.from({ length: 51 }, (_, index) =>
+      createDeal({ id: String(index + 1), title: `Сделка ${index + 1}` }),
+    );
+    render(<App adapter={adapterWith({ kind: "success", items })} />);
+
+    const date = await screen.findByLabelText("Дата до");
+    await user.type(date, "2026-01-31");
+    await user.click(screen.getByRole("button", { name: "Найти сделки" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Следующая страница" }),
+    );
+    expect(screen.getByText("Страница 2 из 3")).toBeInTheDocument();
+
+    await user.clear(date);
+    await user.type(date, "2026-02-28");
+    await user.click(screen.getByRole("button", { name: "Найти сделки" }));
+
+    expect(await screen.findByText("Страница 1 из 3")).toBeInTheDocument();
+  });
 });
