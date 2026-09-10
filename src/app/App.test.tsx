@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { BitrixAdapter } from "../deals/data/BitrixAdapter";
-import type { DealSearchResult } from "../deals/domain/types";
+import type { AppContext, DealSearchResult } from "../deals/domain/types";
 import { createDeal, TEST_FILTER_OPTIONS } from "../test/dealFixtures";
 import { App } from "./App";
 
@@ -227,6 +227,69 @@ describe("App", () => {
     expect(
       screen.queryByRole("button", { name: /удалить/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows portal context and read-only copy without demo deletion controls", async () => {
+    const user = userEvent.setup();
+    const context: AppContext = {
+      portal: "https://team.bitrix24.ru",
+      userId: "42",
+      userName: "Иван Иванов",
+      isAdmin: false,
+      timeZone: "Europe/Moscow",
+      timeZoneLabel: "Europe/Moscow (UTC+03:00)",
+      timeZoneOffsetSeconds: 10800,
+    };
+    render(
+      <App
+        adapter={{
+          getDealFilterOptions: () => Promise.resolve(TEST_FILTER_OPTIONS),
+          searchDeals: () => new Promise<DealSearchResult>(() => {}),
+        }}
+        context={context}
+        mode="bitrix-readonly"
+      />,
+    );
+
+    expect(screen.getByText("Bitrix24 · только чтение")).toBeInTheDocument();
+    expect(screen.getByText(/team\.bitrix24\.ru/)).toBeInTheDocument();
+    expect(screen.getByText(/Иван Иванов/)).toBeInTheDocument();
+    expect(screen.getByText(/Администратор: нет/)).toBeInTheDocument();
+    await user.type(await screen.findByLabelText("Дата до"), "2026-01-31");
+    await user.click(screen.getByRole("button", { name: "Найти сделки" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Ищем сделки в Bitrix24. Ничего не удаляется.",
+    );
+    expect(
+      screen.queryByRole("button", { name: /к подтверждению|удалить/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses a portal-specific filter loading error in real mode", async () => {
+    const context: AppContext = {
+      portal: "https://team.bitrix24.ru",
+      userId: "42",
+      userName: "Иван Иванов",
+      isAdmin: true,
+      timeZone: "Europe/Moscow",
+      timeZoneLabel: "UTC+03:00",
+      timeZoneOffsetSeconds: 10800,
+    };
+    render(
+      <App
+        adapter={{
+          getDealFilterOptions: () => Promise.reject(new Error("secret")),
+          searchDeals: () => Promise.resolve({ kind: "empty" }),
+        }}
+        context={context}
+        mode="bitrix-readonly"
+      />,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Не удалось загрузить справочники Bitrix24.",
+    );
+    expect(document.body).not.toHaveTextContent("secret");
   });
 
   it("связывает готовый результат с исключением без удаления", async () => {

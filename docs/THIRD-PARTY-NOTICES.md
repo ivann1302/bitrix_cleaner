@@ -1,5 +1,15 @@
 # Происхождение внешних материалов
 
+## Bitrix24 JavaScript SDK
+
+Пакет: `@bitrix24/b24jssdk` 2.2.0.
+
+Источник: https://github.com/bitrix24/b24jssdk
+
+Copyright (c) 2024 Bitrix24.
+
+Лицензия: MIT. Полный текст сохранён в `third-party/licenses/bitrix24-b24jssdk-LICENSE.txt`. SDK является runtime-зависимостью браузерной сборки; это не означает одобрение CRM Cleaner компанией Bitrix24.
+
 ## Superpowers
 
 Источник: https://github.com/obra/superpowers

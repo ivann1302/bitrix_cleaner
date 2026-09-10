@@ -4,9 +4,9 @@
 
 ## Источники и версии
 
-| Пакет | Источник | Зафиксированный commit |
-| --- | --- | --- |
-| Superpowers — 14 навыков | [obra/superpowers](https://github.com/obra/superpowers) | `b36e0829c6d0140e93cfef2ca599b1b07d4a7797` |
+| Пакет                         | Источник                                                                                  | Зафиксированный commit                     |
+| ----------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Superpowers — 14 навыков      | [obra/superpowers](https://github.com/obra/superpowers)                                   | `b36e0829c6d0140e93cfef2ca599b1b07d4a7797` |
 | Karpathy Guidelines — 1 навык | [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) | `2c606141936f1eeef17fa3043a72095b4765b9c2` |
 
 Старый адрес forrestchang/andrej-karpathy-skills перенаправляется в multica-ai. Это правила сообщества по наблюдениям Андрея Карпати, не официальный пакет его авторства.
@@ -28,22 +28,22 @@ Codex поддерживает навыки репозитория в `.agents/s
 
 ## Когда что применять
 
-| Ситуация | Навык |
-| --- | --- |
-| Начало работы и выбор процесса | using-superpowers |
-| Новая существенная функция или неясный UX | brainstorming |
-| Превращение принятого решения в задачи | writing-plans |
-| Выполнение готового плана | executing-plans |
-| Бизнес-логика и регрессия ошибки | test-driven-development |
-| Непонятный сбой | systematic-debugging |
-| Проверка перед заявлением «готово» | verification-before-completion |
-| Подготовка ревью | requesting-code-review |
-| Разбор замечаний ревью | receiving-code-review |
-| Работа с изолированными ветками | using-git-worktrees |
-| Завершение ветки | finishing-a-development-branch |
+| Ситуация                                                       | Навык                                                    |
+| -------------------------------------------------------------- | -------------------------------------------------------- |
+| Начало работы и выбор процесса                                 | using-superpowers                                        |
+| Новая существенная функция или неясный UX                      | brainstorming                                            |
+| Превращение принятого решения в задачи                         | writing-plans                                            |
+| Выполнение готового плана                                      | executing-plans                                          |
+| Бизнес-логика и регрессия ошибки                               | test-driven-development                                  |
+| Непонятный сбой                                                | systematic-debugging                                     |
+| Проверка перед заявлением «готово»                             | verification-before-completion                           |
+| Подготовка ревью                                               | requesting-code-review                                   |
+| Разбор замечаний ревью                                         | receiving-code-review                                    |
+| Работа с изолированными ветками                                | using-git-worktrees                                      |
+| Завершение ветки                                               | finishing-a-development-branch                           |
 | Делегирование задач при доступной и разрешённой работе агентов | subagent-driven-development, dispatching-parallel-agents |
-| Создание/изменение собственных навыков | writing-skills |
-| Понятный минимальный код и изменения по задаче | karpathy-guidelines |
+| Создание/изменение собственных навыков                         | writing-skills                                           |
+| Понятный минимальный код и изменения по задаче                 | karpathy-guidelines                                      |
 
 В этой поставке не запускалась работа субагентов, не менялись глобальные настройки Codex и не устанавливались дополнительные модели. Примеры конкретных API инструментов и параметров из upstream нужно сверять с действующей средой, а не копировать буквально.
 

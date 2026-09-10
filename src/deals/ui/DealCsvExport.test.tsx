@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDeal, TEST_FILTER_OPTIONS } from "../../test/dealFixtures";
 import { DealCsvExport } from "./DealCsvExport";
 import { DealPreview } from "./DealPreview";
+import { MOCK_APP_CONTEXT } from "../data/mockContext";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -53,6 +54,8 @@ describe("DealCsvExport", () => {
           excludedIds: new Set(["26"]),
         }}
         options={TEST_FILTER_OPTIONS}
+        context={MOCK_APP_CONTEXT}
+        mode="demo"
         onToggleExcluded={() => undefined}
       />,
     );

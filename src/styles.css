@@ -82,6 +82,15 @@ select:focus-visible {
   font-size: 18px;
 }
 
+.deal-link {
+  color: var(--color-primary);
+  text-underline-offset: 2px;
+}
+
+.deal-link:hover {
+  color: var(--color-primary-hover);
+}
+
 .demo-badge,
 .timezone {
   display: inline-flex;
@@ -130,8 +139,14 @@ h2 {
 
 .intro {
   max-width: 70ch;
-  margin-bottom: 32px;
+  margin-bottom: 12px;
   color: var(--color-text-muted);
+}
+
+.runtime-context {
+  margin-bottom: 32px;
+  color: var(--color-text-subtle);
+  font-size: 14px;
 }
 
 .filter-panel,

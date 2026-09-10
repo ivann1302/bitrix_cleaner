@@ -19,6 +19,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@bitrix24/b24jssdk": "2.2.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

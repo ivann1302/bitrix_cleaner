@@ -1,5 +1,15 @@
 export type DateField = "createdAt" | "updatedAt";
 
+export interface AppContext {
+  readonly portal: string;
+  readonly userId: string;
+  readonly userName: string;
+  readonly isAdmin: boolean;
+  readonly timeZone: string | null;
+  readonly timeZoneLabel: string;
+  readonly timeZoneOffsetSeconds: number;
+}
+
 export interface Deal {
   readonly id: string;
   readonly title: string;

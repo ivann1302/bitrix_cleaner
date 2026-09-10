@@ -30,25 +30,35 @@ Create `src/deals/operation/types.ts`, `OperationRunner.ts`, `OperationRunner.te
 Types consumed by storage and UI:
 
 ```ts
-type ItemStatus = 'pending' | 'sent' | 'deleted' | 'error' | 'unknown';
-interface OperationItem { readonly id:string; readonly status:ItemStatus; readonly attempts:number; readonly errorCode?:string }
+type ItemStatus = "pending" | "sent" | "deleted" | "error" | "unknown";
+interface OperationItem {
+  readonly id: string;
+  readonly status: ItemStatus;
+  readonly attempts: number;
+  readonly errorCode?: string;
+}
 interface OperationRecord {
-  readonly schemaVersion:1; readonly operationId:string;
-  readonly context:OperationContext; readonly createdAt:number;
-  readonly status:'running'|'paused'|'stopped'|'completed'|'interrupted';
-  readonly items:readonly OperationItem[];
+  readonly schemaVersion: 1;
+  readonly operationId: string;
+  readonly context: OperationContext;
+  readonly createdAt: number;
+  readonly status:
+    "running" | "paused" | "stopped" | "completed" | "interrupted";
+  readonly items: readonly OperationItem[];
 }
 interface OperationStore {
-  save(record:OperationRecord):Promise<void>;
-  load(context:OperationContext):Promise<OperationRecord|null>;
+  save(record: OperationRecord): Promise<void>;
+  load(context: OperationContext): Promise<OperationRecord | null>;
 }
 interface OperationLock {
-  runExclusive(key:string,work:()=>Promise<void>):Promise<boolean>;
+  runExclusive(key: string, work: () => Promise<void>): Promise<boolean>;
 }
-type DeleteOutcome = {kind:'deleted'} | {kind:'unknown'} |
-  {kind:'error';code:string;temporary:boolean;retryAfterMs?:number};
+type DeleteOutcome =
+  | { kind: "deleted" }
+  | { kind: "unknown" }
+  | { kind: "error"; code: string; temporary: boolean; retryAfterMs?: number };
 interface DeleteTransport {
-  deleteDeal(id:string,context:OperationContext):Promise<DeleteOutcome>;
+  deleteDeal(id: string, context: OperationContext): Promise<DeleteOutcome>;
 }
 ```
 

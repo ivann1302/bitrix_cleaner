@@ -6,6 +6,8 @@ import { createDeal, TEST_FILTER_OPTIONS } from "../../test/dealFixtures";
 import type { Deal } from "../domain/types";
 import type { DealSearchState } from "../state/searchState";
 import { DealPreview } from "./DealPreview";
+import { MOCK_APP_CONTEXT } from "../data/mockContext";
+import type { AppContext } from "../domain/types";
 
 const criteria = {
   dateField: "createdAt" as const,
@@ -15,7 +17,15 @@ const criteria = {
   assignedById: null,
 };
 
-function PreviewHarness({ items }: { readonly items: readonly Deal[] }) {
+function PreviewHarness({
+  items,
+  context = MOCK_APP_CONTEXT,
+  mode = "demo",
+}: {
+  readonly items: readonly Deal[];
+  readonly context?: AppContext;
+  readonly mode?: "demo" | "bitrix-readonly";
+}) {
   const [excludedIds, setExcludedIds] = useState<ReadonlySet<string>>(
     new Set(),
   );
@@ -33,6 +43,8 @@ function PreviewHarness({ items }: { readonly items: readonly Deal[] }) {
     <DealPreview
       state={state}
       options={TEST_FILTER_OPTIONS}
+      context={context}
+      mode={mode}
       onToggleExcluded={(id) => {
         setExcludedIds((current) => {
           const next = new Set(current);
@@ -114,5 +126,49 @@ describe("DealPreview", () => {
 
     expect(screen.getByText(/Создана:/)).toBeInTheDocument();
     expect(screen.getByText(/Изменена:/)).toBeInTheDocument();
+  });
+
+  it("formats dates in the portal time zone instead of a fixed Moscow zone", () => {
+    render(
+      <PreviewHarness
+        items={[createDeal({ createdAt: "2026-01-01T00:30:00.000Z" })]}
+        context={{
+          portal: "https://team.bitrix24.ru",
+          userId: "42",
+          userName: "Иван Иванов",
+          isAdmin: true,
+          timeZone: "America/Los_Angeles",
+          timeZoneLabel: "America/Los_Angeles (UTC-08:00)",
+          timeZoneOffsetSeconds: -28800,
+        }}
+        mode="bitrix-readonly"
+      />,
+    );
+
+    expect(screen.getByText("Создана: 31.12.2025")).toBeInTheDocument();
+  });
+
+  it("links real preview rows to their Bitrix24 cards and labels read-only mode", () => {
+    render(
+      <PreviewHarness
+        items={[createDeal()]}
+        context={{
+          portal: "https://team.bitrix24.ru",
+          userId: "42",
+          userName: "Иван Иванов",
+          isAdmin: true,
+          timeZone: "Europe/Moscow",
+          timeZoneLabel: "Europe/Moscow (UTC+03:00)",
+          timeZoneOffsetSeconds: 10800,
+        }}
+        mode="bitrix-readonly"
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Тестовая сделка" }),
+    ).toHaveAttribute("href", "https://team.bitrix24.ru/crm/deal/details/1/");
+    expect(screen.getByText(/только для чтения/i)).toBeInTheDocument();
+    expect(screen.queryByText(/искусственных данных/i)).not.toBeInTheDocument();
   });
 });

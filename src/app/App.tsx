@@ -16,7 +16,6 @@ import { DealFilters } from "../deals/ui/DealFilters";
 import { DealPreview } from "../deals/ui/DealPreview";
 import { SearchFeedback } from "../deals/ui/SearchFeedback";
 import { createSelectionSnapshot } from "../deals/domain/confirmation";
-import { MOCK_CONTEXT } from "../deals/data/mockContext";
 import { IndexedDbOperationStore } from "../deals/operation/IndexedDbOperationStore";
 import { BrowserOperationLock } from "../deals/operation/BrowserOperationLock";
 import {
@@ -25,6 +24,9 @@ import {
 } from "../deals/state/useDemoOperation";
 import { DealConfirmation } from "../deals/ui/DealConfirmation";
 import { OperationProgress } from "../deals/ui/OperationProgress";
+import type { AppContext } from "../deals/domain/types";
+import type { AppMode } from "./runtime";
+import { MOCK_APP_CONTEXT } from "../deals/data/mockContext";
 
 const defaultAdapter = new MockBitrixAdapter({
   behavior: { delayMs: 350, deleteDelayMs: 250 },
@@ -49,11 +51,15 @@ type OptionsState =
 interface AppProps {
   readonly adapter?: BitrixAdapter;
   readonly operationServices?: OperationServices;
+  readonly context?: AppContext;
+  readonly mode?: AppMode;
 }
 
 export function App({
   adapter = defaultAdapter,
   operationServices = defaultOperationServices,
+  context = MOCK_APP_CONTEXT,
+  mode = "demo",
 }: AppProps) {
   const [draft, setDraft] = useState(INITIAL_DRAFT);
   const [errors, setErrors] = useState<DealSearchValidationErrors>({});
@@ -71,13 +77,19 @@ export function App({
       ? createSelectionSnapshot(
           {
             ...state,
-            context: MOCK_CONTEXT,
+            context: {
+              portal: context.portal,
+              userId: context.userId,
+              entity: "deal",
+              isAdmin: context.isAdmin,
+            },
             selectionVersion: state.selectionVersion + draftVersion,
           },
           state.collectedAt,
         )
       : null;
-  const transport = adapter instanceof MockBitrixAdapter ? adapter : null;
+  const transport =
+    mode === "demo" && adapter instanceof MockBitrixAdapter ? adapter : null;
   const operation = useDemoOperation(snapshot, transport, operationServices);
 
   useEffect(() => {
@@ -115,20 +127,33 @@ export function App({
     <main className="app-shell">
       <header className="topbar">
         <strong>CRM Cleaner</strong>
-        <span className="demo-badge">Демо-режим</span>
+        <span className="demo-badge">
+          {mode === "demo" ? "Демо-режим" : "Bitrix24 · только чтение"}
+        </span>
       </header>
       <section className="page" aria-labelledby="page-title">
-        <p className="eyebrow">Сделки · искусственный портал demo.local</p>
+        <p className="eyebrow">
+          Сделки · {mode === "demo" ? "искусственный портал" : "портал"}{" "}
+          {context.portal}
+        </p>
         <h1 id="page-title">Старые проигранные сделки</h1>
         <p className="intro">
-          Настройте условия и проверьте результат на искусственных данных.
+          {mode === "demo"
+            ? "Настройте условия и проверьте результат на искусственных данных."
+            : "Настройте условия и проверьте полный список сделок из Bitrix24. Этот режим ничего не удаляет."}
+        </p>
+        <p className="runtime-context">
+          Пользователь: {context.userName} · Администратор:{" "}
+          {context.isAdmin ? "да" : "нет"}
         </p>
         {optionsState.kind === "loading" && (
           <p role="status">Загружаем фильтры…</p>
         )}
         {optionsState.kind === "failure" && (
           <p className="status-panel error" role="alert">
-            Не удалось загрузить демо-фильтры.
+            {mode === "demo"
+              ? "Не удалось загрузить демо-фильтры."
+              : "Не удалось загрузить справочники Bitrix24."}
           </p>
         )}
         {optionsState.kind === "ready" && (
@@ -151,7 +176,7 @@ export function App({
             Условия изменены. Показан результат предыдущего поиска.
           </p>
         )}
-        <SearchFeedback state={state} />
+        <SearchFeedback state={state} mode={mode} />
         {state.kind === "ready" && optionsState.kind === "ready" && (
           <>
             <fieldset className="operation-fieldset" disabled={operation.busy}>
@@ -159,6 +184,8 @@ export function App({
                 key={state.revision}
                 state={state}
                 options={optionsState.value}
+                context={context}
+                mode={mode}
                 onToggleExcluded={(id) => {
                   if (!operation.busy) toggleExcluded(id);
                 }}

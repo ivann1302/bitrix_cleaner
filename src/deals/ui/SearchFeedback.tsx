@@ -1,17 +1,21 @@
 import type { DealSearchState } from "../state/searchState";
+import type { AppMode } from "../../app/runtime";
 
 interface SearchFeedbackProps {
   readonly state: DealSearchState;
+  readonly mode?: AppMode;
 }
 
-export function SearchFeedback({ state }: SearchFeedbackProps) {
+export function SearchFeedback({ state, mode = "demo" }: SearchFeedbackProps) {
   switch (state.kind) {
     case "initial":
       return <p className="status-panel">Задайте условия и запустите поиск.</p>;
     case "loading":
       return (
         <p className="status-panel" role="status">
-          Ищем сделки в демо-данных. Ничего не удаляется.
+          {mode === "demo"
+            ? "Ищем сделки в демо-данных. Ничего не удаляется."
+            : "Ищем сделки в Bitrix24. Ничего не удаляется."}
         </p>
       );
     case "ready":
