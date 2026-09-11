@@ -175,11 +175,11 @@ describe("MockBitrixAdapter", () => {
       deals: [
         createDeal({ id: "match" }),
         createDeal({ id: "assignee", assignedById: "20" }),
-        createDeal({ id: "stage", stageId: "main-active" }),
+        createDeal({ id: "stage", statusId: "main-active" }),
         createDeal({
           id: "pipeline",
           pipelineId: "repeat",
-          stageId: "repeat-lost",
+          statusId: "repeat-lost",
         }),
       ],
     });

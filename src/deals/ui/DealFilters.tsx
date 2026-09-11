@@ -1,17 +1,17 @@
 import type { FormEvent } from "react";
 import type {
-  DealFilterOptions,
-  DealSearchDraft,
+  CrmFilterOptions,
+  CrmSearchDraft,
   DealSearchValidationErrors,
 } from "../domain/types";
 import { CriteriaSummary } from "./CriteriaSummary";
 
 interface DealFiltersProps {
-  readonly draft: DealSearchDraft;
-  readonly options: DealFilterOptions;
+  readonly draft: CrmSearchDraft;
+  readonly options: CrmFilterOptions;
   readonly errors: DealSearchValidationErrors;
   readonly loading: boolean;
-  readonly onDraftChange: (draft: DealSearchDraft) => void;
+  readonly onDraftChange: (draft: CrmSearchDraft) => void;
   readonly onSubmit: () => void;
 }
 
@@ -23,9 +23,15 @@ export function DealFilters({
   onDraftChange,
   onSubmit,
 }: DealFiltersProps) {
-  const stages = options.stages.filter(
-    (stage) => draft.pipelineId === "" || stage.pipelineId === draft.pipelineId,
-  );
+  if (draft.entity !== options.entity) return null;
+  const stages =
+    draft.entity === "deal" && options.entity === "deal"
+      ? options.stages.filter(
+          (stage) =>
+            draft.pipelineId === "" || stage.pipelineId === draft.pipelineId,
+        )
+      : [];
+  const entityLabel = draft.entity === "deal" ? "сделки" : "лиды";
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -38,7 +44,7 @@ export function DealFilters({
         <div className="filter-heading">
           <div>
             <p className="eyebrow">Условия</p>
-            <h2>Какие сделки проверить</h2>
+            <h2>Какие {entityLabel} проверить</h2>
           </div>
           <span className="timezone">
             Часовой пояс: {options.timeZoneLabel}
@@ -89,44 +95,66 @@ export function DealFilters({
               </span>
             )}
           </label>
-          <label className="field">
-            <span>Воронка</span>
-            <select
-              aria-label="Воронка"
-              value={draft.pipelineId}
-              onChange={(event) =>
-                onDraftChange({
-                  ...draft,
-                  pipelineId: event.target.value,
-                  stageId: "",
-                })
-              }
-            >
-              <option value="">Все воронки</option>
-              {options.pipelines.map((pipeline) => (
-                <option key={pipeline.id} value={pipeline.id}>
-                  {pipeline.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Проигранная стадия</span>
-            <select
-              aria-label="Проигранная стадия"
-              value={draft.stageId}
-              onChange={(event) =>
-                onDraftChange({ ...draft, stageId: event.target.value })
-              }
-            >
-              <option value="">Все проигранные стадии</option>
-              {stages.map((stage) => (
-                <option key={stage.id} value={stage.id}>
-                  {stage.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {draft.entity === "deal" && options.entity === "deal" ? (
+            <>
+              <label className="field">
+                <span>Воронка</span>
+                <select
+                  aria-label="Воронка"
+                  value={draft.pipelineId}
+                  onChange={(event) =>
+                    onDraftChange({
+                      ...draft,
+                      pipelineId: event.target.value,
+                      stageId: "",
+                    })
+                  }
+                >
+                  <option value="">Все воронки</option>
+                  {options.pipelines.map((pipeline) => (
+                    <option key={pipeline.id} value={pipeline.id}>
+                      {pipeline.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Проигранная стадия</span>
+                <select
+                  aria-label="Проигранная стадия"
+                  value={draft.stageId}
+                  onChange={(event) =>
+                    onDraftChange({ ...draft, stageId: event.target.value })
+                  }
+                >
+                  <option value="">Все проигранные стадии</option>
+                  {stages.map((stage) => (
+                    <option key={stage.id} value={stage.id}>
+                      {stage.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          ) : draft.entity === "lead" && options.entity === "lead" ? (
+            <label className="field">
+              <span>Неуспешный статус</span>
+              <select
+                aria-label="Неуспешный статус"
+                value={draft.statusId}
+                onChange={(event) =>
+                  onDraftChange({ ...draft, statusId: event.target.value })
+                }
+              >
+                <option value="">Все неуспешные статусы</option>
+                {options.statuses.map((status) => (
+                  <option key={status.id} value={status.id}>
+                    {status.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className="field">
             <span>Ответственный</span>
             <select
@@ -151,7 +179,7 @@ export function DealFilters({
           </p>
         )}
         <button className="primary-button" type="submit" disabled={loading}>
-          {loading ? "Ищем сделки…" : "Найти сделки"}
+          {loading ? `Ищем ${entityLabel}…` : `Найти ${entityLabel}`}
         </button>
       </form>
       <CriteriaSummary draft={draft} options={options} />

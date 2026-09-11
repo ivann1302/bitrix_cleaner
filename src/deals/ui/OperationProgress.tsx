@@ -1,4 +1,5 @@
 import type { OperationRecord } from "../operation/types";
+import { ENTITY_COPY } from "../domain/entityCopy";
 
 const labels = {
   running: "Выполняется демо-удаление",
@@ -41,14 +42,15 @@ export function OperationProgress({
       <h2 id="operation-title">{labels[record.status]}</h2>
       <p>
         Портал: {record.context.portal} · Пользователь: {record.context.userId}{" "}
-        · Сделки
+        · {record.context.entity === "deal" ? "Сделки" : "Лиды"}
       </p>
       <div role="status">
         <p>
           Обработано {processed} из {record.items.length}
         </p>
         <p>
-          Удалено: {deleted} · Ошибок: {errors}
+          Удалено {ENTITY_COPY[record.context.entity].many}: {deleted} · Ошибок:{" "}
+          {errors}
         </p>
         <p>Неизвестно: {unknown}</p>
       </div>

@@ -1,31 +1,27 @@
 import { useMemo, useState } from "react";
 import { getSelectionCounts } from "../domain/selection";
-import type {
-  AppContext,
-  Deal,
-  DealFilterOptions,
-  DealSearchCriteria,
-} from "../domain/types";
-import type { DealSearchState } from "../state/searchState";
+import type { AppContext, CrmFilterOptions, CrmItem } from "../domain/types";
+import { ENTITY_COPY } from "../domain/entityCopy";
+import type { CrmSearchState } from "../state/searchState";
 import type { AppMode } from "../../app/runtime";
 import { CriteriaSummary } from "./CriteriaSummary";
 import { DealCsvExport } from "./DealCsvExport";
 import { getPreviewPageCount, getPreviewPageItems } from "./pagination";
 
-type ReadyState = Extract<DealSearchState, { kind: "ready" }>;
+type ReadyState = Extract<CrmSearchState, { kind: "ready" }>;
 
 interface DealPreviewProps {
   readonly state: ReadyState;
-  readonly options: DealFilterOptions;
+  readonly options: CrmFilterOptions;
   readonly context: AppContext;
   readonly mode: AppMode;
   readonly onToggleExcluded: (id: string) => void;
 }
 
-function dealCardUrl(
+function crmCardUrl(
   mode: AppMode,
   context: AppContext,
-  id: string,
+  item: CrmItem,
 ): string | null {
   if (mode !== "bitrix-readonly") return null;
   try {
@@ -33,7 +29,8 @@ function dealCardUrl(
     if (portal.protocol !== "https:" || portal.origin !== context.portal) {
       return null;
     }
-    return new URL(`/crm/deal/details/${id}/`, portal).toString();
+    const segment = item.entity === "deal" ? "deal" : "lead";
+    return new URL(`/crm/${segment}/details/${item.id}/`, portal).toString();
   } catch {
     return null;
   }
@@ -47,11 +44,12 @@ export function DealPreview({
   onToggleExcluded,
 }: DealPreviewProps) {
   const [page, setPage] = useState(1);
-  const pageCount = getPreviewPageCount(state.items.length);
+  const entity = state.criteria.entity;
+  const items = state.items.filter((item) => item.entity === entity);
+  const pageCount = getPreviewPageCount(items.length);
   const currentPage = Math.min(page, pageCount);
-  const deals = state.items.filter((item): item is Deal => item.entity === "deal");
-  const rows = getPreviewPageItems(deals, currentPage);
-  const counts = getSelectionCounts(state.items, state.excludedIds);
+  const rows = getPreviewPageItems(items, currentPage);
+  const counts = getSelectionCounts(items, state.excludedIds);
   const dateFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat("ru-RU", {
@@ -62,14 +60,15 @@ export function DealPreview({
       }),
     [context.timeZone],
   );
-  const formatDate = (deal: Deal, field: "createdAt" | "updatedAt") => {
-    const value = new Date(deal[field]);
+  const formatDate = (item: CrmItem, field: "createdAt" | "updatedAt") => {
+    const value = new Date(item[field]);
     const displayValue =
       context.timeZone === null
         ? new Date(value.getTime() + context.timeZoneOffsetSeconds * 1000)
         : value;
     return dateFormatter.format(displayValue);
   };
+  if (options.entity !== entity) return null;
 
   return (
     <section className="preview-layout" aria-labelledby="preview-title">
@@ -79,27 +78,27 @@ export function DealPreview({
             <p className="eyebrow">Результат поиска</p>
             <h2 id="preview-title">Проверьте список</h2>
           </div>
-          <p>Исключите сделки, которые хотите сохранить.</p>
+          <p>Исключите {ENTITY_COPY[entity].many}, которые хотите сохранить.</p>
         </div>
         <div className="table-scroll">
           <table className="deal-table">
             <thead>
               <tr>
                 <th scope="col">В списке</th>
-                <th scope="col">Сделка</th>
+                <th scope="col">{entity === "deal" ? "Сделка" : "Лид"}</th>
                 <th scope="col">Ответственный</th>
                 <th scope="col">Даты</th>
-                <th scope="col">Стадия</th>
+                <th scope="col">{entity === "deal" ? "Стадия" : "Статус"}</th>
                 <th scope="col">Действие</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((deal) => {
-                const excluded = state.excludedIds.has(deal.id);
-                const cardUrl = dealCardUrl(mode, context, deal.id);
+              {rows.map((item) => {
+                const excluded = state.excludedIds.has(item.id);
+                const cardUrl = crmCardUrl(mode, context, item);
                 return (
                   <tr
-                    key={deal.id}
+                    key={item.id}
                     className={excluded ? "row-excluded" : undefined}
                   >
                     <td>
@@ -107,14 +106,14 @@ export function DealPreview({
                         <input
                           type="checkbox"
                           checked={!excluded}
-                          aria-label={`Включить ${deal.title}`}
-                          onChange={() => onToggleExcluded(deal.id)}
+                          aria-label={`Включить ${item.title}`}
+                          onChange={() => onToggleExcluded(item.id)}
                         />
                       </label>
                     </td>
                     <td>
                       {cardUrl === null ? (
-                        <strong>{deal.title}</strong>
+                        <strong>{item.title}</strong>
                       ) : (
                         <a
                           className="deal-link"
@@ -122,25 +121,28 @@ export function DealPreview({
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <strong>{deal.title}</strong>
+                          <strong>{item.title}</strong>
                         </a>
                       )}
                       <span className="deal-id">
-                        ID {deal.id} · {deal.pipelineName}
+                        ID {item.id}
+                        {item.entity === "deal"
+                          ? ` · ${item.pipelineName}`
+                          : ""}
                       </span>
                     </td>
-                    <td>{deal.assignedByName}</td>
+                    <td>{item.assignedByName}</td>
                     <td>
-                      <span>Создана: {formatDate(deal, "createdAt")}</span>
-                      <span>Изменена: {formatDate(deal, "updatedAt")}</span>
+                      <span>Создана: {formatDate(item, "createdAt")}</span>
+                      <span>Изменена: {formatDate(item, "updatedAt")}</span>
                     </td>
-                    <td>{deal.stageName}</td>
+                    <td>{item.statusName}</td>
                     <td>
                       <button
                         className="row-action"
                         type="button"
-                        aria-label={`${excluded ? "Вернуть" : "Исключить"} ${deal.title}`}
-                        onClick={() => onToggleExcluded(deal.id)}
+                        aria-label={`${excluded ? "Вернуть" : "Исключить"} ${item.title}`}
+                        onClick={() => onToggleExcluded(item.id)}
                       >
                         {excluded ? "Вернуть" : "Исключить"}
                       </button>
@@ -178,7 +180,7 @@ export function DealPreview({
       <aside className="summary-panel" aria-label="Сводка результата">
         <p className="eyebrow">К проверке</p>
         <strong className="summary-number">{counts.selected}</strong>
-        <span>сделок выбрано</span>
+        <span>{ENTITY_COPY[entity].many} выбрано</span>
         <dl className="metrics">
           <div role="group" aria-label={`Найдено ${counts.found}`}>
             <dt>Найдено</dt>
@@ -194,11 +196,15 @@ export function DealPreview({
           </div>
         </dl>
         <CriteriaSummary
-          draft={state.criteria as DealSearchCriteria}
+          draft={state.criteria}
           options={options}
           title="Условия сохранённого поиска"
         />
-        <DealCsvExport items={deals} excludedIds={state.excludedIds} />
+        <DealCsvExport
+          entity={entity}
+          items={items}
+          excludedIds={state.excludedIds}
+        />
         <p className="demo-note">
           {mode === "demo"
             ? "Это локальный preview искусственных данных. Запросов к Bitrix24 нет."

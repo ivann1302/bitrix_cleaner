@@ -27,8 +27,6 @@ export interface Deal extends CrmItemBase {
   readonly entity: "deal";
   readonly pipelineId: string;
   readonly pipelineName: string;
-  readonly stageId: string;
-  readonly stageName: string;
 }
 
 export interface Lead extends CrmItemBase {

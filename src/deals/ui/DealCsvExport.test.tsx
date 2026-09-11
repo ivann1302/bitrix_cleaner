@@ -1,7 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createDeal, TEST_FILTER_OPTIONS } from "../../test/dealFixtures";
+import {
+  createDeal,
+  createLead,
+  TEST_FILTER_OPTIONS,
+} from "../../test/dealFixtures";
 import { DealCsvExport } from "./DealCsvExport";
 import { DealPreview } from "./DealPreview";
 import { MOCK_APP_CONTEXT } from "../data/mockContext";
@@ -16,17 +20,41 @@ function downloadBoundary() {
     .fn<(blob: Blob) => string>()
     .mockReturnValue("blob:csv-test");
   const revokeObjectURL = vi.fn();
+  const filenames: string[] = [];
   vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
   const click = vi
     .spyOn(HTMLAnchorElement.prototype, "click")
-    .mockImplementation(() => undefined);
-  return { createObjectURL, revokeObjectURL, click };
+    .mockImplementation(function (this: HTMLAnchorElement) {
+      filenames.push(this.download);
+    });
+  return { createObjectURL, revokeObjectURL, click, filenames };
 }
 
 describe("DealCsvExport", () => {
+  it("downloads leads with an entity-specific filename", async () => {
+    const boundary = downloadBoundary();
+    render(
+      <DealCsvExport
+        entity="lead"
+        items={[createLead()]}
+        excludedIds={new Set()}
+      />,
+    );
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: /Скачать CSV/ }));
+
+    expect(boundary.filenames).toEqual(["crm-cleaner-leads.csv"]);
+  });
+
   it("blocks exporting an empty selection", () => {
     render(
-      <DealCsvExport items={[createDeal()]} excludedIds={new Set(["1"])} />,
+      <DealCsvExport
+        entity="deal"
+        items={[createDeal()]}
+        excludedIds={new Set(["1"])}
+      />,
     );
     expect(screen.getByRole("button", { name: /Скачать CSV/ })).toBeDisabled();
   });
@@ -82,7 +110,11 @@ describe("DealCsvExport", () => {
   it("cleans up the object URL on unmount", async () => {
     const boundary = downloadBoundary();
     const { unmount } = render(
-      <DealCsvExport items={[createDeal()]} excludedIds={new Set()} />,
+      <DealCsvExport
+        entity="deal"
+        items={[createDeal()]}
+        excludedIds={new Set()}
+      />,
     );
     await userEvent
       .setup()
@@ -96,7 +128,13 @@ describe("DealCsvExport", () => {
     boundary.click.mockImplementationOnce(() => {
       throw new Error("secret internal path");
     });
-    render(<DealCsvExport items={[createDeal()]} excludedIds={new Set()} />);
+    render(
+      <DealCsvExport
+        entity="deal"
+        items={[createDeal()]}
+        excludedIds={new Set()}
+      />,
+    );
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /Скачать CSV/ }));
     expect(screen.getByRole("alert")).not.toHaveTextContent(

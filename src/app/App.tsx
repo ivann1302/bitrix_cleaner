@@ -167,6 +167,7 @@ export function App({
               errors={errors}
               loading={state.kind === "loading"}
               onDraftChange={(next) => {
+                if (next.entity !== "deal") return;
                 setDraft(next);
                 setDraftVersion((version) => version + 1);
               }}

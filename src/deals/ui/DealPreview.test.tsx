@@ -2,8 +2,17 @@ import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { createDeal, TEST_FILTER_OPTIONS } from "../../test/dealFixtures";
-import type { Deal } from "../domain/types";
+import {
+  createDeal,
+  createLead,
+  TEST_FILTER_OPTIONS,
+  TEST_LEAD_FILTER_OPTIONS,
+} from "../../test/dealFixtures";
+import type {
+  CrmFilterOptions,
+  CrmItem,
+  CrmSearchCriteria,
+} from "../domain/types";
 import type { DealSearchState } from "../state/searchState";
 import { DealPreview } from "./DealPreview";
 import { MOCK_APP_CONTEXT } from "../data/mockContext";
@@ -20,10 +29,14 @@ const criteria = {
 
 function PreviewHarness({
   items,
+  options = TEST_FILTER_OPTIONS,
+  savedCriteria = criteria,
   context = MOCK_APP_CONTEXT,
   mode = "demo",
 }: {
-  readonly items: readonly Deal[];
+  readonly items: readonly CrmItem[];
+  readonly options?: CrmFilterOptions;
+  readonly savedCriteria?: CrmSearchCriteria;
   readonly context?: AppContext;
   readonly mode?: "demo" | "bitrix-readonly";
 }) {
@@ -33,7 +46,7 @@ function PreviewHarness({
   const state: Extract<DealSearchState, { kind: "ready" }> = {
     kind: "ready",
     revision: 1,
-    criteria,
+    criteria: savedCriteria,
     items,
     excludedIds,
     collectedAt: 1000,
@@ -43,7 +56,7 @@ function PreviewHarness({
   return (
     <DealPreview
       state={state}
-      options={TEST_FILTER_OPTIONS}
+      options={options}
       context={context}
       mode={mode}
       onToggleExcluded={(id) => {
@@ -59,6 +72,35 @@ function PreviewHarness({
 }
 
 describe("DealPreview", () => {
+  it("renders lead-specific columns, copy, and Bitrix24 card links", () => {
+    render(
+      <PreviewHarness
+        items={[createLead()]}
+        options={TEST_LEAD_FILTER_OPTIONS}
+        savedCriteria={{
+          entity: "lead",
+          dateField: "createdAt",
+          beforeDate: "2026-01-31",
+          statusId: null,
+          assignedById: null,
+        }}
+        context={{
+          ...MOCK_APP_CONTEXT,
+          portal: "https://portal.example",
+        }}
+        mode="bitrix-readonly"
+      />,
+    );
+
+    expect(screen.getByRole("columnheader", { name: "Лид" })).toBeVisible();
+    expect(screen.getByRole("columnheader", { name: "Статус" })).toBeVisible();
+    expect(screen.queryByText("Воронка")).not.toBeInTheDocument();
+    expect(screen.getByText("лидов выбрано")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Некачественная заявка" }),
+    ).toHaveAttribute("href", "https://portal.example/crm/lead/details/41/");
+  });
+
   it("excludes and restores a deal with exact result-wide counters", async () => {
     const user = userEvent.setup();
     render(

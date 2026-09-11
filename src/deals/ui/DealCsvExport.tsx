@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { createDealCsv } from "../domain/dealCsv";
-import type { Deal } from "../domain/types";
+import { createCrmCsv } from "../domain/dealCsv";
+import { ENTITY_COPY } from "../domain/entityCopy";
+import type { CrmEntity, CrmItem } from "../domain/types";
 
 interface DealCsvExportProps {
-  readonly items: readonly Deal[];
+  readonly entity: CrmEntity;
+  readonly items: readonly CrmItem[];
   readonly excludedIds: ReadonlySet<string>;
 }
 
-export function DealCsvExport({ items, excludedIds }: DealCsvExportProps) {
+export function DealCsvExport({
+  entity,
+  items,
+  excludedIds,
+}: DealCsvExportProps) {
   const [failed, setFailed] = useState(false);
   const downloads = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const selected = items.filter((deal) => !excludedIds.has(deal.id)).length;
@@ -29,12 +35,13 @@ export function DealCsvExport({ items, excludedIds }: DealCsvExportProps) {
     let url: string | undefined;
     const link = document.createElement("a");
     try {
-      const blob = new Blob([createDealCsv(items, excludedIds)], {
+      const blob = new Blob([createCrmCsv(entity, items, excludedIds)], {
         type: "text/csv;charset=utf-8",
       });
       url = URL.createObjectURL(blob);
       link.href = url;
-      link.download = "crm-cleaner-deals.csv";
+      link.download =
+        entity === "deal" ? "crm-cleaner-deals.csv" : "crm-cleaner-leads.csv";
       document.body.append(link);
       link.click();
       // Give the browser time to begin consuming the download before releasing it.
@@ -65,8 +72,8 @@ export function DealCsvExport({ items, excludedIds }: DealCsvExportProps) {
         Скачать CSV ({selected})
       </button>
       <p className="demo-note">
-        CSV содержит поля выбранных сделок со всех страниц. Это не полная
-        резервная копия CRM.
+        CSV содержит поля выбранных {ENTITY_COPY[entity].many} со всех страниц.
+        Это не полная резервная копия CRM.
       </p>
       {failed && (
         <p role="alert">

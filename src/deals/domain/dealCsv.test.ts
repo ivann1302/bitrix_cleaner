@@ -1,8 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { createDeal } from "../../test/dealFixtures";
-import { createDealCsv } from "./dealCsv";
+import { createDeal, createLead } from "../../test/dealFixtures";
+import { createCrmCsv, createDealCsv } from "./dealCsv";
 
 describe("createDealCsv", () => {
+  it("exports lead fields without a pipeline column", () => {
+    const csv = createCrmCsv("lead", [createLead()], new Set());
+
+    expect(csv).toBe(
+      '\uFEFF"ID","Название","Статус","Ответственный","Дата создания","Дата изменения"\r\n' +
+        '"41","Некачественная заявка","Забракован","Иван Иванов","2026-01-01T00:00:00.000Z","2026-02-01T00:00:00.000Z"\r\n',
+    );
+    expect(csv).not.toContain("Воронка");
+  });
+
+  it("rejects a cross-entity row even when it is excluded", () => {
+    expect(() => createCrmCsv("lead", [createDeal()], new Set(["1"]))).toThrow(
+      "entity-mismatch",
+    );
+  });
+
   it("exports selected preview fields with BOM, quotes and CRLF", () => {
     expect(createDealCsv([createDeal()], new Set())).toBe(
       '\uFEFF"ID","Сделка","Воронка","Ответственный","Создана (ISO 8601)","Изменена (ISO 8601)","Стадия"\r\n' +
@@ -50,7 +66,7 @@ describe("createDealCsv", () => {
           assignedByName: value,
           createdAt: value,
           updatedAt: value,
-          stageName: value,
+          statusName: value,
         }),
       ],
       new Set(),

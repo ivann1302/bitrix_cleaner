@@ -1,12 +1,20 @@
 import type { DealSearchState } from "../state/searchState";
 import type { AppMode } from "../../app/runtime";
+import type { CrmEntity } from "../domain/types";
 
 interface SearchFeedbackProps {
   readonly state: DealSearchState;
   readonly mode?: AppMode;
+  readonly entity?: CrmEntity;
 }
 
-export function SearchFeedback({ state, mode = "demo" }: SearchFeedbackProps) {
+export function SearchFeedback({
+  state,
+  mode = "demo",
+  entity = "deal",
+}: SearchFeedbackProps) {
+  const plural = entity === "deal" ? "сделки" : "лиды";
+  const many = entity === "deal" ? "сделок" : "лидов";
   switch (state.kind) {
     case "initial":
       return <p className="status-panel">Задайте условия и запустите поиск.</p>;
@@ -14,8 +22,8 @@ export function SearchFeedback({ state, mode = "demo" }: SearchFeedbackProps) {
       return (
         <p className="status-panel" role="status">
           {mode === "demo"
-            ? "Ищем сделки в демо-данных. Ничего не удаляется."
-            : "Ищем сделки в Bitrix24. Ничего не удаляется."}
+            ? `Ищем ${plural} в демо-данных. Ничего не удаляется.`
+            : `Ищем ${plural} в Bitrix24. Ничего не удаляется.`}
         </p>
       );
     case "ready":
@@ -27,13 +35,13 @@ export function SearchFeedback({ state, mode = "demo" }: SearchFeedbackProps) {
     case "empty":
       return (
         <p className="status-panel" role="status">
-          По этим условиям сделок нет
+          По этим условиям {many} нет
         </p>
       );
     case "over-limit":
       return (
         <p className="status-panel warning" role="status">
-          Найдено больше 3 000 сделок. Сузьте условия.
+          Найдено больше 3 000 {many}. Сузьте условия.
         </p>
       );
     case "failure":
@@ -41,7 +49,7 @@ export function SearchFeedback({ state, mode = "demo" }: SearchFeedbackProps) {
         <p className="status-panel error" role="alert">
           {state.code === "mock-unavailable"
             ? "Демо-данные временно недоступны. Повторите поиск."
-            : "Не удалось получить сделки. Повторите поиск."}
+            : `Не удалось получить ${plural}. Повторите поиск.`}
         </p>
       );
   }

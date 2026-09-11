@@ -434,8 +434,6 @@ function parseDeal(value: unknown, options: DealFilterOptions): Deal {
     statusName: stage.name,
     pipelineId,
     pipelineName: pipeline.name,
-    stageId,
-    stageName: stage.name,
     assignedById,
     assignedByName: assignee?.name ?? `Пользователь ID ${assignedById}`,
     createdAt: parseIsoDateTime(item.createdTime),

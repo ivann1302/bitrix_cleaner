@@ -124,7 +124,11 @@ export function validateCrmSearchDraft(
       fieldErrors: { beforeDate: "Укажите корректную календарную дату." },
     };
   }
-  if (criteria.beforeDate === null && criteria.statusId === null && criteria.assignedById === null) {
+  if (
+    criteria.beforeDate === null &&
+    criteria.statusId === null &&
+    criteria.assignedById === null
+  ) {
     return {
       ok: false,
       fieldErrors: {},

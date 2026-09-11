@@ -589,8 +589,6 @@ describe("BitrixDealReadAdapter search", () => {
           statusName: "Проиграна",
           pipelineId: "0",
           pipelineName: "Основная",
-          stageId: "LOSE",
-          stageName: "Проиграна",
           assignedById: "10",
           assignedByName: "Анна Смирнова",
           createdAt: "2026-01-10T09:00:00.000Z",

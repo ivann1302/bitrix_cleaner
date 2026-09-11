@@ -133,7 +133,7 @@ export class MockBitrixAdapter implements BitrixAdapter, DeleteTransport {
                   .map((stage) => stage.id),
               );
               if (this.deletedIds.has(`deal:${deal.id}`)) return false;
-              if (!lostStageIds.has(deal.stageId)) return false;
+              if (!lostStageIds.has(deal.statusId)) return false;
               if (
                 criteria.pipelineId !== null &&
                 deal.pipelineId !== criteria.pipelineId
@@ -141,7 +141,7 @@ export class MockBitrixAdapter implements BitrixAdapter, DeleteTransport {
                 return false;
               if (
                 criteria.stageId !== null &&
-                deal.stageId !== criteria.stageId
+                deal.statusId !== criteria.stageId
               )
                 return false;
               if (

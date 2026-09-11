@@ -1,7 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TEST_FILTER_OPTIONS } from "../../test/dealFixtures";
+import {
+  TEST_FILTER_OPTIONS,
+  TEST_LEAD_FILTER_OPTIONS,
+} from "../../test/dealFixtures";
 import type { SelectionSnapshot } from "../domain/confirmation";
 import { DealConfirmation } from "./DealConfirmation";
 
@@ -45,6 +48,37 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("DealConfirmation", () => {
+  it("uses lead-specific confirmation wording and criteria", async () => {
+    const leadSnapshot: SelectionSnapshot = {
+      ...snapshot,
+      context: { ...snapshot.context, entity: "lead" },
+      criteria: {
+        entity: "lead",
+        dateField: "createdAt",
+        beforeDate: "2026-01-31",
+        statusId: "JUNK",
+        assignedById: null,
+      },
+      ids: ["1", "2", "3"],
+    };
+    render(
+      <DealConfirmation
+        snapshot={leadSnapshot}
+        options={TEST_LEAD_FILTER_OPTIONS}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "К подтверждению" }));
+
+    expect(
+      screen.getByRole("button", { name: "Удалить 3 демо-лида" }),
+    ).toBeEnabled();
+    expect(screen.getByText(/Статус: Забракован/)).toBeVisible();
+  });
+
   it("returns focus to the explanation if the trigger became disabled", async () => {
     const user = userEvent.setup();
     const { rerender } = render(

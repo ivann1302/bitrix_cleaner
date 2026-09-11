@@ -3,12 +3,13 @@ import {
   isSelectionCurrent,
   type SelectionSnapshot,
 } from "../domain/confirmation";
-import type { DealFilterOptions } from "../domain/types";
+import { entityNoun } from "../domain/entityCopy";
+import type { CrmFilterOptions } from "../domain/types";
 import { CriteriaSummary } from "./CriteriaSummary";
 
 interface Props {
   readonly snapshot: SelectionSnapshot | null;
-  readonly options: DealFilterOptions;
+  readonly options: CrmFilterOptions;
   readonly onConfirm: (snapshot: SelectionSnapshot) => void;
 }
 
@@ -114,16 +115,15 @@ export function DealConfirmation({ snapshot, options, onConfirm }: Props) {
             <h2 id="confirmation-title">Подтверждение демо-удаления</h2>
             <p>Портал: {opened.context.portal}</p>
             <p>
-              Пользователь: {opened.context.userId} · Сделки:{" "}
+              Пользователь: {opened.context.userId} ·{" "}
+              {opened.context.entity === "deal" ? "Сделки" : "Лиды"}:{" "}
               {opened.ids.length}
             </p>
-            {opened.criteria.entity === "deal" && (
-              <CriteriaSummary
-                draft={opened.criteria}
-                options={options}
-                title="Подтверждаемые условия"
-              />
-            )}
+            <CriteriaSummary
+              draft={opened.criteria}
+              options={options}
+              title="Подтверждаемые условия"
+            />
             <p>
               Будут обработаны только выбранные ID. В реальной CRM удаление
               может быть необратимым; CSV не является полной резервной копией.
@@ -149,7 +149,8 @@ export function DealConfirmation({ snapshot, options, onConfirm }: Props) {
                 disabled={!current}
                 onClick={confirm}
               >
-                Удалить {opened.ids.length} демо-сделки
+                Удалить {opened.ids.length} демо-
+                {entityNoun(opened.context.entity, opened.ids.length)}
               </button>
             </div>
           </>
