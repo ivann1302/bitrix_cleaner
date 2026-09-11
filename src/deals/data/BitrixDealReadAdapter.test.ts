@@ -6,7 +6,7 @@ import type {
   BitrixReadListMethod,
 } from "../../bitrix/BitrixReadGateway";
 import { BitrixDealReadAdapter } from "./BitrixDealReadAdapter";
-import type { DealSearchCriteria } from "../domain/types";
+import type { DealSearchCriteria, LeadSearchCriteria } from "../domain/types";
 
 type CallResponses = Partial<Record<BitrixReadCallMethod, unknown>>;
 type ListPages = readonly (readonly unknown[])[];
@@ -114,12 +114,32 @@ const BASE_CRITERIA: DealSearchCriteria = {
   assignedById: null,
 };
 
+const BASE_LEAD_CRITERIA: LeadSearchCriteria = {
+  entity: "lead",
+  dateField: "createdAt",
+  beforeDate: "2026-09-01",
+  statusId: null,
+  assignedById: null,
+};
+
 function rawDeal(id: number, overrides: Record<string, unknown> = {}) {
   return {
     id,
     title: `Сделка ${id}`,
     categoryId: 0,
     stageId: "LOSE",
+    assignedById: 10,
+    createdTime: "2026-01-10T12:00:00+03:00",
+    updatedTime: "2026-01-20T15:00:00+03:00",
+    ...overrides,
+  };
+}
+
+function rawLead(id: number, overrides: Record<string, unknown> = {}) {
+  return {
+    id,
+    title: `Лид ${id}`,
+    stageId: "JUNK",
     assignedById: 10,
     createdTime: "2026-01-10T12:00:00+03:00",
     updatedTime: "2026-01-20T15:00:00+03:00",
@@ -856,6 +876,227 @@ describe("BitrixDealReadAdapter search", () => {
     await expect(adapter.searchDeals(BASE_CRITERIA)).resolves.toEqual({
       kind: "failure",
       code: "invalid-bitrix-response",
+    });
+  });
+});
+
+describe("BitrixDealReadAdapter lead read path", () => {
+  const leadStatuses = [
+    {
+      ID: "1",
+      STATUS_ID: "NEW",
+      NAME: "Новый",
+      SORT: "10",
+      EXTRA: { SEMANTICS: "process" },
+    },
+    {
+      ID: "2",
+      STATUS_ID: "NOT_INTERESTED",
+      NAME: "Не интересно",
+      SORT: "200",
+      EXTRA: { SEMANTICS: "failure" },
+    },
+    {
+      ID: "3",
+      STATUS_ID: "JUNK",
+      NAME: "Некачественный лид",
+      SORT: "100",
+      SEMANTICS: "F",
+    },
+    {
+      ID: "4",
+      STATUS_ID: "CONVERTED",
+      NAME: "Сконвертирован",
+      SORT: "300",
+      EXTRA: { SEMANTICS: "success" },
+    },
+  ];
+
+  it("loads all failed lead statuses in CRM order without deal categories", async () => {
+    const firstPage = [
+      ...Array.from({ length: 48 }, (_, index) => ({
+        ID: String(index + 10),
+        STATUS_ID: `PROCESS_${index}`,
+        NAME: `Рабочий ${index}`,
+        SORT: String(index + 300),
+        EXTRA: { SEMANTICS: "process" },
+      })),
+      leadStatuses[1],
+      leadStatuses[3],
+    ];
+    const gateway = createGateway({
+      lists: {
+        "crm.status.list": [firstPage, [leadStatuses[2], leadStatuses[1]]],
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    await expect(adapter.getFilterOptions("lead")).resolves.toEqual({
+      entity: "lead",
+      statuses: [
+        { id: "JUNK", name: "Некачественный лид", isFailed: true },
+        { id: "NOT_INTERESTED", name: "Не интересно", isFailed: true },
+      ],
+      assignees: [
+        { id: "10", name: "Анна Смирнова" },
+        { id: "20", name: "Михаил Волков" },
+      ],
+      timeZoneLabel: "Europe/Moscow (сейчас UTC+03:00)",
+    });
+    expect(gateway.calls).not.toContainEqual(
+      expect.objectContaining({ method: "crm.category.list" }),
+    );
+    expect(gateway.lists[0]).toEqual({
+      method: "crm.status.list",
+      params: { filter: { ENTITY_ID: "STATUS" } },
+      options: { idKey: "ID" },
+    });
+  });
+
+  it("builds the exact failed-lead query and parses historical assignees", async () => {
+    const gateway = createGateway({
+      lists: {
+        "crm.status.list": [leadStatuses],
+        "crm.item.list": [[rawLead(701, { assignedById: 99 })]],
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    await expect(adapter.search(BASE_LEAD_CRITERIA)).resolves.toEqual({
+      kind: "success",
+      items: [
+        {
+          entity: "lead",
+          id: "701",
+          title: "Лид 701",
+          statusId: "JUNK",
+          statusName: "Некачественный лид",
+          assignedById: "99",
+          assignedByName: "Пользователь ID 99",
+          createdAt: "2026-01-10T09:00:00.000Z",
+          updatedAt: "2026-01-20T12:00:00.000Z",
+        },
+      ],
+    });
+    expect(
+      gateway.lists.find(({ method }) => method === "crm.item.list"),
+    ).toEqual({
+      method: "crm.item.list",
+      params: {
+        entityTypeId: 1,
+        select: [
+          "id",
+          "title",
+          "stageId",
+          "assignedById",
+          "createdTime",
+          "updatedTime",
+        ],
+        filter: {
+          "@stageId": ["JUNK", "NOT_INTERESTED"],
+          "<=createdTime": "2026-09-01T23:59:59+03:00",
+        },
+      },
+      options: { idKey: "id", customKeyForResult: "items" },
+    });
+  });
+
+  it("uses selected failed status, assignee, and updated date", async () => {
+    const gateway = createGateway({
+      lists: {
+        "crm.status.list": [leadStatuses],
+        "crm.item.list": [[]],
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    await adapter.search({
+      ...BASE_LEAD_CRITERIA,
+      dateField: "updatedAt",
+      statusId: "NOT_INTERESTED",
+      assignedById: "20",
+    });
+
+    expect(
+      gateway.lists.find(({ method }) => method === "crm.item.list")?.params,
+    ).toMatchObject({
+      filter: {
+        stageId: "NOT_INTERESTED",
+        assignedById: 20,
+        "<=updatedTime": "2026-09-01T23:59:59+03:00",
+      },
+    });
+  });
+
+  it("does not request unfiltered lead items without failed statuses", async () => {
+    const gateway = createGateway({
+      lists: { "crm.status.list": [[leadStatuses[0], leadStatuses[3]]] },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    await expect(adapter.search(BASE_LEAD_CRITERIA)).resolves.toEqual({
+      kind: "empty",
+    });
+    expect(gateway.lists.some(({ method }) => method === "crm.item.list")).toBe(
+      false,
+    );
+  });
+
+  it.each([
+    [0, { kind: "empty" }],
+    [3000, { kind: "success" }],
+    [3001, { kind: "over-limit", matchedAtLeast: 3001 }],
+  ] as const)(
+    "handles the %i unique-lead boundary",
+    async (count, expected) => {
+      const gateway = createGateway({
+        lists: {
+          "crm.status.list": [leadStatuses],
+          "crm.item.list": [
+            Array.from({ length: count }, (_, index) => rawLead(index + 1)),
+          ],
+        },
+      });
+      const result = await new BitrixDealReadAdapter(gateway).search(
+        BASE_LEAD_CRITERIA,
+      );
+
+      expect(result).toMatchObject(expected);
+      if (result.kind === "success") expect(result.items).toHaveLength(count);
+    },
+  );
+
+  it("deduplicates leads and safely rejects malformed fields and criteria", async () => {
+    const duplicateGateway = createGateway({
+      lists: {
+        "crm.status.list": [leadStatuses],
+        "crm.item.list": [[rawLead(1), rawLead(1)]],
+      },
+    });
+    const malformedGateway = createGateway({
+      lists: {
+        "crm.status.list": [leadStatuses],
+        "crm.item.list": [[rawLead(1, { stageId: "UNKNOWN" })]],
+      },
+    });
+
+    await expect(
+      new BitrixDealReadAdapter(duplicateGateway).search(BASE_LEAD_CRITERIA),
+    ).resolves.toMatchObject({ kind: "success", items: [{ id: "1" }] });
+    await expect(
+      new BitrixDealReadAdapter(malformedGateway).search(BASE_LEAD_CRITERIA),
+    ).resolves.toEqual({
+      kind: "failure",
+      code: "invalid-bitrix-response",
+    });
+    await expect(
+      new BitrixDealReadAdapter(createGateway()).search({
+        ...BASE_LEAD_CRITERIA,
+        statusId: "SUCCESS",
+      }),
+    ).resolves.toEqual({
+      kind: "failure",
+      code: "invalid-search-criteria",
     });
   });
 });

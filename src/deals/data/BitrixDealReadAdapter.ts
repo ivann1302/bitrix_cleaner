@@ -13,15 +13,21 @@ import type {
   DealSearchCriteria,
   DealSearchResult,
   DealStageOption,
+  Lead,
+  LeadFilterOptions,
+  LeadSearchCriteria,
+  LeadStatusOption,
   NamedOption,
 } from "../domain/types";
 import {
-  DEAL_SEARCH_LIMIT,
+  CRM_SEARCH_LIMIT,
   validateDealSearchDraft,
+  validateCrmSearchDraft,
 } from "../domain/dealSearch";
 import type { BitrixAdapter } from "./BitrixAdapter";
 
 const DEAL_ENTITY_TYPE_ID = 2;
+const LEAD_ENTITY_TYPE_ID = 1;
 const BITRIX_LIST_PAGE_SIZE = 50;
 const MAX_TIME_ZONE_OFFSET_SECONDS = 14 * 60 * 60;
 
@@ -307,6 +313,47 @@ function parseStages(
   return stages.map(({ option }) => option);
 }
 
+function parseLeadStatuses(value: unknown): readonly LeadStatusOption[] {
+  if (!Array.isArray(value)) throw invalidResponse();
+  const seen = new Set<string>();
+  const statuses: Array<{
+    option: LeadStatusOption;
+    sort: number;
+    position: number;
+  }> = [];
+  for (const [position, entry] of value.entries()) {
+    const status = asRecord(entry);
+    const id = asNonEmptyString(status.STATUS_ID);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const direct = optionalTrimmedString(status.SEMANTICS)?.toLowerCase();
+    const extra =
+      typeof status.EXTRA === "object" &&
+      status.EXTRA !== null &&
+      !Array.isArray(status.EXTRA)
+        ? optionalTrimmedString(
+            (status.EXTRA as UnknownRecord).SEMANTICS,
+          )?.toLowerCase()
+        : null;
+    if (direct !== "f" && extra !== "failure") continue;
+    statuses.push({
+      option: {
+        id,
+        name: asNonEmptyString(status.NAME),
+        isFailed: true,
+      },
+      sort: parseSort(status.SORT),
+      position,
+    });
+  }
+  statuses.sort((left, right) =>
+    left.sort === right.sort
+      ? left.position - right.position
+      : left.sort - right.sort,
+  );
+  return statuses.map(({ option }) => option);
+}
+
 function parseUser(value: unknown): NamedOption | null {
   const user = asRecord(value);
   if (typeof user.ACTIVE !== "boolean") throw invalidResponse();
@@ -396,6 +443,27 @@ function parseDeal(value: unknown, options: DealFilterOptions): Deal {
   };
 }
 
+function parseLead(value: unknown, options: LeadFilterOptions): Lead {
+  const item = asRecord(value);
+  const id = asNumericId(item.id);
+  const statusId = asNonEmptyString(item.stageId);
+  const assignedById = asNumericId(item.assignedById);
+  const status = options.statuses.find((entry) => entry.id === statusId);
+  if (status === undefined) throw invalidResponse();
+  const assignee = options.assignees.find((entry) => entry.id === assignedById);
+  return {
+    entity: "lead",
+    id,
+    title: asNonEmptyString(item.title),
+    statusId,
+    statusName: status.name,
+    assignedById,
+    assignedByName: assignee?.name ?? `Пользователь ID ${assignedById}`,
+    createdAt: parseIsoDateTime(item.createdTime),
+    updatedAt: parseIsoDateTime(item.updatedTime),
+  };
+}
+
 function validateCriteria(
   criteria: DealSearchCriteria,
   options: DealFilterOptions,
@@ -475,6 +543,58 @@ function buildSearchFilter(
   return filter;
 }
 
+function buildLeadSearchFilter(
+  criteria: LeadSearchCriteria,
+  options: LeadFilterOptions,
+  context: AppContext,
+): Readonly<Record<string, unknown>> | null {
+  const validation = validateCrmSearchDraft({
+    entity: "lead",
+    dateField: criteria.dateField,
+    beforeDate: criteria.beforeDate ?? "",
+    statusId: criteria.statusId ?? "",
+    assignedById: criteria.assignedById ?? "",
+  });
+  const selectedStatus =
+    criteria.statusId === null
+      ? null
+      : options.statuses.find((status) => status.id === criteria.statusId);
+  const selectedAssignee =
+    criteria.assignedById === null
+      ? null
+      : options.assignees.find(
+          (assignee) => assignee.id === criteria.assignedById,
+        );
+  if (
+    !validation.ok ||
+    (criteria.statusId !== null && selectedStatus === undefined) ||
+    (criteria.assignedById !== null && selectedAssignee === undefined)
+  )
+    throw new BitrixGatewayError("invalid-search-criteria");
+  if (options.statuses.length === 0) return null;
+
+  const filter: Record<string, unknown> = {};
+  if (criteria.statusId === null) {
+    filter["@stageId"] = options.statuses.map((status) => status.id);
+  } else {
+    filter.stageId = criteria.statusId;
+  }
+  if (criteria.assignedById !== null) {
+    filter.assignedById = Number(criteria.assignedById);
+  }
+  if (criteria.beforeDate !== null) {
+    const field =
+      criteria.dateField === "createdAt" ? "createdTime" : "updatedTime";
+    const offset =
+      context.timeZone === null
+        ? context.timeZoneOffsetSeconds
+        : offsetForLocalEndOfDay(criteria.beforeDate, context.timeZone);
+    filter[`<=${field}`] =
+      `${criteria.beforeDate}T23:59:59${formatNumericOffset(offset)}`;
+  }
+  return filter;
+}
+
 function searchFailureCode(error: unknown): string {
   return error instanceof BitrixGatewayError
     ? error.code
@@ -482,9 +602,10 @@ function searchFailureCode(error: unknown): string {
 }
 
 export class BitrixDealReadAdapter implements BitrixAdapter {
-  public readonly supportedEntities = ["deal"] as const;
+  public readonly supportedEntities = ["deal", "lead"] as const;
   private contextPromise: Promise<AppContext> | null = null;
-  private optionsPromise: Promise<DealFilterOptions> | null = null;
+  private dealOptionsPromise: Promise<DealFilterOptions> | null = null;
+  private leadOptionsPromise: Promise<LeadFilterOptions> | null = null;
 
   public constructor(private readonly gateway: BitrixReadGateway) {}
 
@@ -496,9 +617,12 @@ export class BitrixDealReadAdapter implements BitrixAdapter {
   }
 
   public getFilterOptions(entity: CrmEntity): Promise<CrmFilterOptions> {
-    if (entity !== "deal") return Promise.reject(new Error("unsupported-entity"));
-    this.optionsPromise ??= this.loadFilterOptions();
-    return this.optionsPromise;
+    if (entity === "deal") {
+      this.dealOptionsPromise ??= this.loadDealFilterOptions();
+      return this.dealOptionsPromise;
+    }
+    this.leadOptionsPromise ??= this.loadLeadFilterOptions();
+    return this.leadOptionsPromise;
   }
 
   public getDealFilterOptions(): Promise<DealFilterOptions> {
@@ -506,48 +630,73 @@ export class BitrixDealReadAdapter implements BitrixAdapter {
   }
 
   public async search(criteria: CrmSearchCriteria): Promise<CrmSearchResult> {
-    if (criteria.entity !== "deal") throw new Error("unsupported-entity");
     try {
       const context = await this.loadContext();
-      const options = await this.getDealFilterOptions();
-      const filter = buildSearchFilter(criteria, options, context);
+      const options = await this.getFilterOptions(criteria.entity);
+      let filter: Readonly<Record<string, unknown>> | null;
+      if (criteria.entity === "deal") {
+        if (options.entity !== "deal") throw invalidResponse();
+        filter = buildSearchFilter(criteria, options, context);
+      } else {
+        if (options.entity !== "lead") throw invalidResponse();
+        filter = buildLeadSearchFilter(criteria, options, context);
+      }
       if (filter === null) return { kind: "empty" };
 
-      const deals: Deal[] = [];
+      const items: Array<Deal | Lead> = [];
       const seen = new Set<string>();
       for await (const page of this.gateway.fetchList(
         "crm.item.list",
         {
-          entityTypeId: DEAL_ENTITY_TYPE_ID,
-          select: [
-            "id",
-            "title",
-            "categoryId",
-            "stageId",
-            "assignedById",
-            "createdTime",
-            "updatedTime",
-          ],
+          entityTypeId:
+            criteria.entity === "deal"
+              ? DEAL_ENTITY_TYPE_ID
+              : LEAD_ENTITY_TYPE_ID,
+          select:
+            criteria.entity === "deal"
+              ? [
+                  "id",
+                  "title",
+                  "categoryId",
+                  "stageId",
+                  "assignedById",
+                  "createdTime",
+                  "updatedTime",
+                ]
+              : [
+                  "id",
+                  "title",
+                  "stageId",
+                  "assignedById",
+                  "createdTime",
+                  "updatedTime",
+                ],
           filter,
         },
         { idKey: "id", customKeyForResult: "items" },
       )) {
         for (const value of page) {
-          const deal = parseDeal(value, options);
-          if (seen.has(deal.id)) continue;
-          seen.add(deal.id);
-          deals.push(deal);
-          if (deals.length > DEAL_SEARCH_LIMIT) {
+          const item =
+            criteria.entity === "deal" && options.entity === "deal"
+              ? parseDeal(value, options)
+              : criteria.entity === "lead" && options.entity === "lead"
+                ? parseLead(value, options)
+                : null;
+          if (item === null) throw invalidResponse();
+          if (seen.has(item.id)) continue;
+          seen.add(item.id);
+          items.push(item);
+          if (items.length > CRM_SEARCH_LIMIT) {
             return {
               kind: "over-limit",
-              matchedAtLeast: DEAL_SEARCH_LIMIT + 1,
+              matchedAtLeast: CRM_SEARCH_LIMIT + 1,
             };
           }
         }
       }
-      return deals.length === 0
+      return items.length === 0
         ? { kind: "empty" }
-        : { kind: "success", items: deals };
+        : { kind: "success", items };
     } catch (error) {
       return { kind: "failure", code: searchFailureCode(error) };
     }
@@ -557,7 +706,29 @@ export class BitrixDealReadAdapter implements BitrixAdapter {
     return this.search(criteria) as Promise<DealSearchResult>;
   }
 
-  private async loadFilterOptions(): Promise<DealFilterOptions> {
+  private async loadAssignees(): Promise<readonly NamedOption[]> {
+    const assignees: NamedOption[] = [];
+    const seenAssignees = new Set<string>();
+    for await (const page of this.gateway.fetchList(
+      "user.get",
+      {
+        filter: { ACTIVE: true },
+        select: ["ID", "ACTIVE", "NAME", "LAST_NAME"],
+      },
+      { idKey: "ID" },
+    )) {
+      for (const value of page) {
+        const user = parseUser(value);
+        if (user !== null && !seenAssignees.has(user.id)) {
+          seenAssignees.add(user.id);
+          assignees.push(user);
+        }
+      }
+    }
+    return assignees;
+  }
+
+  private async loadDealFilterOptions(): Promise<DealFilterOptions> {
     const context = await this.loadContext();
     const categoryRows: unknown[] = [];
     for (let start = 0; ; start += BITRIX_LIST_PAGE_SIZE) {
@@ -588,30 +759,31 @@ export class BitrixDealReadAdapter implements BitrixAdapter {
       );
     }
 
-    const assignees: NamedOption[] = [];
-    const seenAssignees = new Set<string>();
-    for await (const page of this.gateway.fetchList(
-      "user.get",
-      {
-        filter: { ACTIVE: true },
-        select: ["ID", "ACTIVE", "NAME", "LAST_NAME"],
-      },
-      { idKey: "ID" },
-    )) {
-      for (const value of page) {
-        const user = parseUser(value);
-        if (user !== null && !seenAssignees.has(user.id)) {
-          seenAssignees.add(user.id);
-          assignees.push(user);
-        }
-      }
-    }
+    const assignees = await this.loadAssignees();
 
     return {
       entity: "deal",
       pipelines,
       stages,
       assignees,
+      timeZoneLabel: context.timeZoneLabel,
+    };
+  }
+
+  private async loadLeadFilterOptions(): Promise<LeadFilterOptions> {
+    const context = await this.loadContext();
+    const statusRows: unknown[] = [];
+    for await (const page of this.gateway.fetchList(
+      "crm.status.list",
+      { filter: { ENTITY_ID: "STATUS" } },
+      { idKey: "ID" },
+    )) {
+      statusRows.push(...page);
+    }
+    return {
+      entity: "lead",
+      statuses: parseLeadStatuses(statusRows),
+      assignees: await this.loadAssignees(),
       timeZoneLabel: context.timeZoneLabel,
     };
   }
