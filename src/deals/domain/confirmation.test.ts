@@ -151,6 +151,21 @@ describe("createSelectionSnapshot", () => {
         ),
       ).toBeNull();
   });
+  it("rejects an invalid runtime date field before confirmation", () => {
+    const source = input();
+    // Deliberately bypass the compile-time union to check the runtime boundary.
+    const dateField = "unexpected-field" as typeof criteria.dateField;
+    expect(
+      createSelectionSnapshot(
+        { ...source, criteria: { ...criteria, dateField } },
+        now,
+      ),
+    ).toBeNull();
+    const valid = createSelectionSnapshot(source, now);
+    if (valid === null) throw new Error("Invalid fixture");
+    const malformed = { ...valid, criteria: { ...criteria, dateField } };
+    expect(isSelectionCurrent(malformed, malformed, now)).toBe(false);
+  });
   it("rejects empty collection and fully excluded collection", () => {
     expect(createSelectionSnapshot({ ...input(), items: [] }, now)).toBeNull();
     expect(

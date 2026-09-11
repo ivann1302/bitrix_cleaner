@@ -15,6 +15,8 @@ import {
   TEST_LEAD_FILTER_OPTIONS,
 } from "../test/dealFixtures";
 import { App } from "./App";
+import { MockBitrixAdapter } from "../deals/data/MockBitrixAdapter";
+import { MOCK_APP_CONTEXT } from "../deals/data/mockContext";
 
 function adapterWith(result: DealSearchResult): BitrixAdapter {
   return {
@@ -25,6 +27,29 @@ function adapterWith(result: DealSearchResult): BitrixAdapter {
 }
 
 describe("App", () => {
+  it("offers lead preview and CSV but no confirmation in read-only mode even with a delete-capable adapter", async () => {
+    const user = userEvent.setup();
+    render(
+      <App
+        adapter={new MockBitrixAdapter({ leads: [createLead()] })}
+        context={{ ...MOCK_APP_CONTEXT, portal: "https://portal.example" }}
+        mode="bitrix-readonly"
+      />,
+    );
+    await user.click(screen.getByRole("radio", { name: "Лиды" }));
+    await user.type(await screen.findByLabelText("Дата до"), "2026-12-31");
+    await user.click(screen.getByRole("button", { name: "Найти лиды" }));
+    expect(
+      await screen.findByRole("link", { name: "Некачественная заявка" }),
+    ).toHaveAttribute("href", "https://portal.example/crm/lead/details/41/");
+    expect(
+      screen.getByRole("button", { name: "Скачать CSV (1)" }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: /к подтверждению|удалить/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("switches safely from a ready deal preview to lead filters", async () => {
     const user = userEvent.setup();
     const adapter: BitrixAdapter = {

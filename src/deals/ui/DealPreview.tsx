@@ -78,7 +78,10 @@ export function DealPreview({
             <p className="eyebrow">Результат поиска</p>
             <h2 id="preview-title">Проверьте список</h2>
           </div>
-          <p>Исключите {ENTITY_COPY[entity].many}, которые хотите сохранить.</p>
+          <p>
+            Исключите {entity === "deal" ? "сделки" : "лиды"}, которые хотите
+            сохранить.
+          </p>
         </div>
         <div className="table-scroll">
           <table className="deal-table">

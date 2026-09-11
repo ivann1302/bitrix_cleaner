@@ -729,6 +729,8 @@ git add PLAN.md PRODUCT.md docs/PLAN.md docs/PRODUCT.md docs/STATUS.md docs/TEST
 git commit -m "docs: record local lead entity verification"
 ```
 
-- [ ] **Step 6: Request final independent review**
+- [x] **Step 6: Request final independent review**
 
 Review the complete range from the pre-Task-1 base commit through Task 6 against `docs/superpowers/specs/2026-09-10-lead-entity-design.md`. Fix every Critical and Important finding, rerun the affected focused tests, and rerun the complete verification suite before completion.
+
+Completed: independent review of `20656b8..259b5bb` found no Critical/Important issues. Minor date-field validation, wording and evidence corrections were addressed; reviewer rechecked the code delta with 78 passing tests. Full suite after corrections: 290 passing tests. See `docs/TEST-MATRIX.md`, run `local-lead-entity-2026-09-11`.

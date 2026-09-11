@@ -66,6 +66,8 @@ function isValidSelection(snapshot: SelectionSnapshot, now: number): boolean {
     context.userId.trim() !== "" &&
     (context.entity === "deal" || context.entity === "lead") &&
     criteria.entity === context.entity &&
+    (criteria.dateField === "createdAt" ||
+      criteria.dateField === "updatedAt") &&
     Number.isSafeInteger(snapshot.revision) &&
     snapshot.revision > 0 &&
     Number.isSafeInteger(snapshot.selectionVersion) &&

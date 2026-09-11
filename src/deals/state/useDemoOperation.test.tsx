@@ -2,6 +2,7 @@ import { StrictMode, type PropsWithChildren } from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { createSelectionSnapshot } from "../domain/confirmation";
+import type { OperationContext } from "../domain/confirmation";
 import { MOCK_CONTEXT } from "../data/mockContext";
 import type {
   DeleteOutcome,
@@ -89,6 +90,44 @@ function delayedTransport() {
 }
 
 describe("useDemoOperation lifecycle", () => {
+  it("ignores a late deal checkpoint after switching to leads with the same services", async () => {
+    const oldLoad = deferred<OperationRecord | null>();
+    const loaded: string[] = [];
+    const storage = services((context) => {
+      loaded.push(context.entity);
+      return context.entity === "deal"
+        ? oldLoad.promise
+        : Promise.resolve(null);
+    });
+    const delayed = delayedTransport();
+    const { result, rerender } = renderHook(
+      ({ context }: { context: OperationContext }) =>
+        useDemoOperation(
+          null,
+          delayed.transport,
+          storage.dependencies,
+          context,
+        ),
+      { initialProps: { context: MOCK_CONTEXT } },
+    );
+    rerender({ context: { ...MOCK_CONTEXT, entity: "lead" } });
+    await waitFor(() => expect(result.current.storage).toBe("ready"));
+    await act(async () => {
+      oldLoad.resolve({
+        schemaVersion: 1,
+        operationId: "old-deal",
+        context: MOCK_CONTEXT,
+        createdAt: Date.now(),
+        status: "running",
+        items: [{ id: "1", status: "sent", attempts: 1 }],
+      });
+      await oldLoad.promise;
+    });
+    expect(loaded).toEqual(["deal", "lead"]);
+    expect(result.current.record).toBeNull();
+    expect(delayed.calls).toEqual([]);
+  });
+
   it("resets busy on dependency replacement and blocks start until the replacement store is ready", async () => {
     const original = services();
     const pendingLoad = deferred<OperationRecord | null>();
