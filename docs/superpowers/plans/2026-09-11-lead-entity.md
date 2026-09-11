@@ -53,7 +53,7 @@
 - Consumes: current deal domain, reducer, hook, and the 3,000-item limit.
 - Produces: `CrmEntity`, `CrmItem`, `CrmFilterOptions`, `CrmSearchDraft`, `CrmSearchCriteria`, `CrmSearchResult`, `CRM_SEARCH_LIMIT`, `createInitialDraft()`, `normalizeCrmSearchDraft()`, `validateCrmSearchDraft()`, `criteriaSignature()`, `CrmSearchState`, `useCrmSearch()`, and the entity-aware `BitrixAdapter` boundary.
 
-- [ ] **Step 1: Add failing domain tests for lead discrimination and validation**
+- [x] **Step 1: Add failing domain tests for lead discrimination and validation**
 
 Add tests that construct these exact shapes and prove that a lead needs no pipeline while an empty lead search is still rejected:
 
@@ -84,7 +84,7 @@ expect(validateCrmSearchDraft(createInitialDraft("lead"))).toMatchObject({
 
 Add a signature assertion proving otherwise identical deal and lead criteria differ. Add reducer/hook tests proving `reset` returns to `initial`, and an old lead search response cannot resolve a newer deal search.
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
 Run:
 
@@ -94,7 +94,7 @@ npm test -- src/deals/domain/dealSearch.test.ts src/deals/domain/selection.test.
 
 Expected: FAIL because the CRM unions, factories, reset action, and generic hook do not exist.
 
-- [ ] **Step 3: Introduce the minimal discriminated types and generic helpers**
+- [x] **Step 3: Introduce the minimal discriminated types and generic helpers**
 
 Use these public shapes; keep deal aliases only where needed to migrate later tasks without making this task uncompilable:
 
@@ -231,7 +231,7 @@ respective implementations. Update `App` to the generic method names while it
 still fixes the selected entity to deals. This keeps the repository
 type-correct at the Task 1 commit.
 
-- [ ] **Step 4: Run focused and full shared-domain tests and verify GREEN**
+- [x] **Step 4: Run focused and full shared-domain tests and verify GREEN**
 
 Run:
 
@@ -242,7 +242,7 @@ npm run typecheck
 
 Expected: all selected tests and typecheck PASS; existing deal semantics remain unchanged.
 
-- [ ] **Step 5: Commit the domain increment**
+- [x] **Step 5: Commit the domain increment**
 
 ```bash
 git add src/deals/domain src/deals/state src/deals/data/BitrixAdapter.ts src/deals/data/MockBitrixAdapter.ts src/deals/data/mockDeals.ts src/deals/data/BitrixDealReadAdapter.ts src/deals/data/BitrixDealReadAdapter.test.ts src/deals/data/MockBitrixAdapter.test.ts src/app/App.tsx src/test/dealFixtures.ts
@@ -273,7 +273,7 @@ git commit -m "refactor: introduce shared CRM entity domain"
 - Consumes: Task 1 CRM unions and `CRM_SEARCH_LIMIT`.
 - Produces: entity-aware `OperationContext`, `SelectionSnapshot`, `DeleteTransport.deleteItem()`, mock lead dictionaries/items, and a mock adapter implementing both entities.
 
-- [ ] **Step 1: Write failing safety tests for cross-entity isolation**
+- [x] **Step 1: Write failing safety tests for cross-entity isolation**
 
 Add confirmation tests using a valid lead selection and assert:
 
@@ -288,7 +288,7 @@ Add checkpoint tests proving schema `1` accepts a lead record only in a matching
 
 Add runner tests proving `deleteItem(id, context)` receives `entity: "lead"`, and add mock tests for successful lead search/deletion plus rejection of a lead ID under a deal context.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
 Run:
 
@@ -298,7 +298,7 @@ npm test -- src/deals/domain/confirmation.test.ts src/deals/operation src/deals/
 
 Expected: FAIL because operation records only accept deals and the transport is deal-specific.
 
-- [ ] **Step 3: Implement entity-aware safety boundaries and mock data**
+- [x] **Step 3: Implement entity-aware safety boundaries and mock data**
 
 Change the operation contracts exactly as follows:
 
@@ -328,7 +328,7 @@ deleteItem(id: string, context: OperationContext): Promise<DeleteOutcome>;
 
 The lead search must enforce failed statuses even if called without a specific status. The delete method must choose the dataset by `context.entity` and never match an ID from the other entity.
 
-- [ ] **Step 4: Run focused tests, operation tests, and typecheck**
+- [x] **Step 4: Run focused tests, operation tests, and typecheck**
 
 Run:
 
@@ -339,7 +339,7 @@ npm run typecheck
 
 Expected: all selected tests and typecheck PASS.
 
-- [ ] **Step 5: Commit the safety and mock increment**
+- [x] **Step 5: Commit the safety and mock increment**
 
 ```bash
 git add src/deals/domain/confirmation.ts src/deals/domain/confirmation.test.ts src/deals/operation src/deals/data/MockBitrixAdapter.ts src/deals/data/MockBitrixAdapter.test.ts src/deals/data/MockDeletion.test.ts src/deals/data/mockDeals.ts src/deals/data/mockLeads.ts
@@ -362,7 +362,7 @@ git commit -m "feat: add isolated mock lead operations"
 - Consumes: entity-aware adapter contract from Task 1 and existing read gateway allowlist.
 - Produces: lead dictionaries and `crm.item.list` preview with `entityTypeId: 1`; no new gateway methods.
 
-- [ ] **Step 1: Add failing contract tests for lead statuses and item search**
+- [x] **Step 1: Add failing contract tests for lead statuses and item search**
 
 Add tests asserting the exact lead status request:
 
@@ -403,7 +403,7 @@ expect(gateway.fetchList).toHaveBeenCalledWith(
 
 Also cover one selected status, assignee/date filters, unknown historical assignee fallback, malformed fields, no failed statuses with no item request, duplicates, and the 0/3,000/3,001 boundaries.
 
-- [ ] **Step 2: Run adapter tests and verify RED**
+- [x] **Step 2: Run adapter tests and verify RED**
 
 Run:
 
@@ -413,7 +413,7 @@ npm test -- src/deals/data/BitrixDealReadAdapter.test.ts src/bitrix/B24SdkReadGa
 
 Expected: FAIL because the real adapter exposes only deal methods.
 
-- [ ] **Step 3: Implement the lead read branch with shared parsers**
+- [x] **Step 3: Implement the lead read branch with shared parsers**
 
 Implement the Task 1 `BitrixAdapter` interface for leads and advertise
 `["deal", "lead"]`. Within the existing real adapter, cache dictionaries per
@@ -426,7 +426,7 @@ Build lead item filters with `@stageId` for the discovered failed status IDs and
 
 Keep the gateway allowlists byte-for-byte unchanged and add a regression assertion that `crm.item.delete` is still rejected before any SDK call.
 
-- [ ] **Step 4: Run focused adapter/runtime tests and typecheck**
+- [x] **Step 4: Run focused adapter/runtime tests and typecheck**
 
 Run:
 
@@ -437,7 +437,7 @@ npm run typecheck
 
 Expected: all selected tests and typecheck PASS; no mutating method is permitted.
 
-- [ ] **Step 5: Commit the read-only integration increment**
+- [x] **Step 5: Commit the read-only integration increment**
 
 ```bash
 git add src/deals/data/BitrixDealReadAdapter.ts src/deals/data/BitrixDealReadAdapter.test.ts src/bitrix/B24SdkReadGateway.test.ts src/app/runtime.test.ts
@@ -473,7 +473,7 @@ git commit -m "feat: read failed leads from Bitrix24"
 - Consumes: Task 1 CRM unions and Task 2 selection snapshots.
 - Produces: shared UI components that render entity-correct controls, links, nouns, and exports.
 
-- [ ] **Step 1: Write failing component and CSV tests for leads**
+- [x] **Step 1: Write failing component and CSV tests for leads**
 
 Add a lead CSV assertion with the exact header and no pipeline column:
 
@@ -488,7 +488,7 @@ Add UI tests proving that lead filters contain `Неуспешный стату�
 
 Add confirmation and progress assertions for the phrases `Удалить 3 демо-лида` and entity-correct result wording.
 
-- [ ] **Step 2: Run UI/domain tests and verify RED**
+- [x] **Step 2: Run UI/domain tests and verify RED**
 
 Run:
 
@@ -498,7 +498,7 @@ npm test -- src/deals/domain/dealCsv.test.ts src/deals/ui
 
 Expected: FAIL because components assume deal-only pipelines, links, columns, and nouns.
 
-- [ ] **Step 3: Generalize UI behavior with explicit entity branches**
+- [x] **Step 3: Generalize UI behavior with explicit entity branches**
 
 Export `createCrmCsv(entity, items, excludedIds)` and choose headers/rows by the
 explicit entity. Reject any item whose discriminator does not match that
@@ -546,7 +546,7 @@ their existing names, but every preview item uses the shared `statusId` and
 `statusName` fields. Update the real parser, mock data, fixtures, and exact
 expectations accordingly.
 
-- [ ] **Step 4: Run all UI and shared-domain tests plus typecheck**
+- [x] **Step 4: Run all UI and shared-domain tests plus typecheck**
 
 Run:
 
@@ -557,7 +557,7 @@ npm run typecheck
 
 Expected: all selected tests and typecheck PASS for both entities.
 
-- [ ] **Step 5: Commit the entity-aware presentation increment**
+- [x] **Step 5: Commit the entity-aware presentation increment**
 
 ```bash
 git add src/deals/domain/dealCsv.ts src/deals/domain/dealCsv.test.ts src/deals/domain/types.ts src/deals/data/BitrixDealReadAdapter.ts src/deals/data/BitrixDealReadAdapter.test.ts src/deals/data/mockDeals.ts src/deals/ui src/test/dealFixtures.ts
@@ -580,7 +580,7 @@ git commit -m "feat: present and export lead previews"
 - Consumes: Task 2 multi-entity mock adapter, Task 3 real adapter, Task 4 shared UI, and `useCrmSearch().reset()` from Task 1.
 - Produces: a two-entity application with safe switching and complete demo lead flow.
 
-- [ ] **Step 1: Write failing application tests for selection and races**
+- [x] **Step 1: Write failing application tests for selection and races**
 
 Add tests that start on deals, switch to leads, and assert:
 
@@ -601,7 +601,7 @@ Cover these lifecycle cases:
 - complete mock lead search → exclusion → CSV → confirmation → deletion works;
 - real read-only lead preview never renders a delete confirmation.
 
-- [ ] **Step 2: Run application tests and verify RED**
+- [x] **Step 2: Run application tests and verify RED**
 
 Run:
 
@@ -611,7 +611,7 @@ npm test -- src/app/App.test.tsx src/app/OperationFlow.test.tsx
 
 Expected: FAIL because there is no entity selector or lead lifecycle wiring.
 
-- [ ] **Step 3: Implement the selector and entity-scoped async lifecycle**
+- [x] **Step 3: Implement the selector and entity-scoped async lifecycle**
 
 Replace the fixed initial draft with `createInitialDraft(entity)`. On selection change, synchronously reset draft, errors, search state, and confirmation version before loading new options. Guard options with a monotonically increasing request revision in the effect cleanup:
 
@@ -638,7 +638,7 @@ Render two radio buttons or a two-button radiogroup named `Сущность CRM`
 
 Add only the CSS needed for the selector, following the current soft turquoise design and existing focus styles.
 
-- [ ] **Step 4: Run application tests, then the complete suite**
+- [x] **Step 4: Run application tests, then the complete suite**
 
 Run:
 
@@ -650,7 +650,7 @@ npm run typecheck
 
 Expected: focused tests, all project tests, and typecheck PASS.
 
-- [ ] **Step 5: Commit the integrated lead flow**
+- [x] **Step 5: Commit the integrated lead flow**
 
 ```bash
 git add src/app/App.tsx src/app/App.test.tsx src/app/OperationFlow.test.tsx src/styles.css
@@ -676,7 +676,7 @@ git commit -m "feat: add safe deal and lead switching"
 - Consumes: the completed Tasks 1–5 behavior and verification evidence.
 - Produces: authoritative roadmap/status text, byte-identical mirrors, and a fully verified local commit.
 
-- [ ] **Step 1: Update the root product documents first**
+- [x] **Step 1: Update the root product documents first**
 
 In `PLAN.md`, record leads as the selected second entity and state that local demo plus real read-only code is implemented while portal verification remains pending. Do not mark real iframe or real deletion stages complete.
 
@@ -685,11 +685,11 @@ In `PRODUCT.md`, replace the undecided “second CRM entity” wording with lead
 Apply the same textual changes to `docs/PLAN.md` and `docs/PRODUCT.md`, then
 prove that both mirrors are byte-identical with `cmp` in Step 3.
 
-- [ ] **Step 2: Record exact evidence in status, matrix, and decisions**
+- [x] **Step 2: Record exact evidence in status, matrix, and decisions**
 
 Update `docs/STATUS.md` with the actual test count and production bundle sizes from this run. Update `docs/TEST-MATRIX.md` with local lead coverage and leave the Bitrix column unverified. Add a decision to `docs/DECISIONS.md` explaining `entityTypeId: 1`, `ENTITY_ID: STATUS`, failed-only semantics, shared discriminated core, and unchanged read-only allowlist.
 
-- [ ] **Step 3: Run the full verification suite**
+- [x] **Step 3: Run the full verification suite**
 
 Run:
 
@@ -708,7 +708,7 @@ cmp node_modules/@bitrix24/b24jssdk/LICENSE third-party/licenses/bitrix24-b24jss
 
 Expected: every command exits `0`; test count and bundle sizes match the values written to `docs/STATUS.md`.
 
-- [ ] **Step 4: Run read-only and secret regression scans**
+- [x] **Step 4: Run read-only and secret regression scans**
 
 Run:
 
@@ -722,7 +722,7 @@ rg -o 'crm\.category\.list|crm\.item\.list|crm\.status\.list|user\.get' dist/ass
 
 Expected: the first four scans return no matches; the final scan prints only the four expected read methods.
 
-- [ ] **Step 5: Commit the documentation and verified release candidate**
+- [x] **Step 5: Commit the documentation and verified release candidate**
 
 ```bash
 git add PLAN.md PRODUCT.md docs/PLAN.md docs/PRODUCT.md docs/STATUS.md docs/TEST-MATRIX.md docs/DECISIONS.md
