@@ -7,7 +7,7 @@ import type {
   OperationStore,
   OperationLock,
 } from "../deals/operation/types";
-import { createDeal } from "../test/dealFixtures";
+import { createDeal, createLead } from "../test/dealFixtures";
 import { App } from "./App";
 
 beforeEach(() => {
@@ -51,6 +51,32 @@ function services() {
 }
 
 describe("local operation flow", () => {
+  it("searches, excludes, confirms, and deletes only selected demo leads", async () => {
+    const user = userEvent.setup();
+    const adapter = new MockBitrixAdapter({
+      leads: [createLead(), createLead({ id: "42", title: "Сохранить лид" })],
+    });
+    const storage = services();
+    render(<App adapter={adapter} operationServices={storage} />);
+
+    await user.click(screen.getByRole("radio", { name: "Лиды" }));
+    await user.type(await screen.findByLabelText("Дата до"), "2026-12-31");
+    await user.click(screen.getByRole("button", { name: "Найти лиды" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Исключить Сохранить лид" }),
+    );
+    await user.click(screen.getByRole("button", { name: "К подтверждению" }));
+    await user.click(
+      screen.getByRole("button", { name: "Удалить 1 демо-лид" }),
+    );
+
+    expect(await screen.findByText("Операция завершена")).toBeVisible();
+    expect(storage.saved()?.context.entity).toBe("lead");
+    expect(storage.saved()?.items).toEqual([
+      { id: "41", status: "deleted", attempts: 1 },
+    ]);
+  });
+
   it("search → exclusion → confirmation → result keeps excluded deal", async () => {
     const user = userEvent.setup();
     const adapter = new MockBitrixAdapter({
@@ -66,7 +92,7 @@ describe("local operation flow", () => {
     await user.click(screen.getByRole("button", { name: "К подтверждению" }));
     expect(storage.saved()).toBeNull();
     await user.click(
-      screen.getByRole("button", { name: "Удалить 1 демо-сделки" }),
+      screen.getByRole("button", { name: "Удалить 1 демо-сделку" }),
     );
     expect(await screen.findByText("Операция завершена")).toBeInTheDocument();
     expect(storage.saved()?.items).toEqual([

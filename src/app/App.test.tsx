@@ -3,8 +3,17 @@ import { StrictMode } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { BitrixAdapter } from "../deals/data/BitrixAdapter";
-import type { AppContext, DealSearchResult } from "../deals/domain/types";
-import { createDeal, TEST_FILTER_OPTIONS } from "../test/dealFixtures";
+import type {
+  AppContext,
+  CrmFilterOptions,
+  DealSearchResult,
+} from "../deals/domain/types";
+import {
+  createDeal,
+  createLead,
+  TEST_FILTER_OPTIONS,
+  TEST_LEAD_FILTER_OPTIONS,
+} from "../test/dealFixtures";
 import { App } from "./App";
 
 function adapterWith(result: DealSearchResult): BitrixAdapter {
@@ -16,6 +25,60 @@ function adapterWith(result: DealSearchResult): BitrixAdapter {
 }
 
 describe("App", () => {
+  it("switches safely from a ready deal preview to lead filters", async () => {
+    const user = userEvent.setup();
+    const adapter: BitrixAdapter = {
+      supportedEntities: ["deal", "lead"],
+      getFilterOptions: (entity) =>
+        Promise.resolve(
+          entity === "deal" ? TEST_FILTER_OPTIONS : TEST_LEAD_FILTER_OPTIONS,
+        ),
+      search: (criteria) =>
+        Promise.resolve(
+          criteria.entity === "deal"
+            ? { kind: "success", items: [createDeal()] }
+            : { kind: "success", items: [createLead()] },
+        ),
+    };
+    render(<App adapter={adapter} />);
+
+    await user.type(await screen.findByLabelText("Дата до"), "2026-01-31");
+    await user.click(screen.getByRole("button", { name: "Найти сделки" }));
+    expect(await screen.findByText("Тестовая сделка")).toBeVisible();
+
+    await user.click(screen.getByRole("radio", { name: "Лиды" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Старые неуспешные лиды" }),
+    ).toBeVisible();
+    expect(screen.queryByText("Тестовая сделка")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Воронка")).not.toBeInTheDocument();
+    expect(await screen.findByLabelText("Неуспешный статус")).toBeVisible();
+  });
+
+  it("ignores a late deal dictionary after switching to leads", async () => {
+    let resolveDeals: ((value: CrmFilterOptions) => void) | undefined;
+    const adapter: BitrixAdapter = {
+      supportedEntities: ["deal", "lead"],
+      getFilterOptions: (entity) =>
+        entity === "deal"
+          ? new Promise((resolve) => {
+              resolveDeals = resolve;
+            })
+          : Promise.resolve(TEST_LEAD_FILTER_OPTIONS),
+      search: () => Promise.resolve({ kind: "empty" }),
+    };
+    render(<App adapter={adapter} />);
+
+    await userEvent.setup().click(screen.getByRole("radio", { name: "Лиды" }));
+    expect(await screen.findByLabelText("Неуспешный статус")).toBeVisible();
+    resolveDeals?.(TEST_FILTER_OPTIONS);
+    await act(async () => Promise.resolve());
+
+    expect(screen.getByLabelText("Неуспешный статус")).toBeVisible();
+    expect(screen.queryByLabelText("Воронка")).not.toBeInTheDocument();
+  });
+
   it("показывает labels и не запускает пустой фильтр", async () => {
     const user = userEvent.setup();
     const searchDeals = vi.fn(() =>

@@ -149,6 +149,59 @@ h2 {
   font-size: 14px;
 }
 
+.entity-selector {
+  display: flex;
+  width: fit-content;
+  gap: 8px;
+  margin: 0 0 24px;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.entity-selector legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.entity-selector label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.entity-selector label:has(input:checked) {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.entity-selector input {
+  position: absolute;
+  width: 1px;
+  min-height: 1px;
+  opacity: 0;
+}
+
+.entity-selector label:has(input:focus-visible) {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.entity-selector:disabled label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .filter-panel,
 .table-panel,
 .summary-panel,

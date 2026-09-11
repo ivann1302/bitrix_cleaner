@@ -21,7 +21,10 @@ export type CrmSearchState =
       readonly selectionVersion: number;
     } & RevisionState)
   | ({ readonly kind: "empty" } & RevisionState)
-  | ({ readonly kind: "over-limit"; readonly matchedAtLeast: number } & RevisionState)
+  | ({
+      readonly kind: "over-limit";
+      readonly matchedAtLeast: number;
+    } & RevisionState)
   | ({ readonly kind: "failure"; readonly code: string } & RevisionState);
 
 export const INITIAL_CRM_SEARCH_STATE: CrmSearchState = {

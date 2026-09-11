@@ -1,8 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MOCK_CONTEXT } from "../data/mockContext";
 import type { SelectionSnapshot } from "../domain/confirmation";
+import type { OperationContext } from "../domain/confirmation";
 import { OperationRunner } from "../operation/OperationRunner";
-import { recoverOperationRecord } from "../operation/operationRecord";
+import {
+  contextKey,
+  recoverOperationRecord,
+} from "../operation/operationRecord";
 import type {
   DeleteTransport,
   OperationLock,
@@ -19,8 +23,15 @@ export function useDemoOperation(
   snapshot: SelectionSnapshot | null,
   transport: DeleteTransport | null,
   services: OperationServices,
+  operationContext: OperationContext = MOCK_CONTEXT,
 ) {
   const { store, lock } = services;
+  const {
+    portal: operationPortal,
+    userId: operationUserId,
+    entity: operationEntity,
+    isAdmin: operationIsAdmin,
+  } = operationContext;
   const current = useRef(snapshot);
   const runner = useRef<OperationRunner | null>(null);
   const lifecycle = useRef(0);
@@ -31,15 +42,31 @@ export function useDemoOperation(
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [usedRevision, setUsedRevision] = useState<number | null>(null);
-  const [dependencies, setDependencies] = useState({ store, lock, transport });
+  const stableOperationContext = useMemo(
+    () => ({
+      portal: operationPortal,
+      userId: operationUserId,
+      entity: operationEntity,
+      isAdmin: operationIsAdmin,
+    }),
+    [operationPortal, operationUserId, operationEntity, operationIsAdmin],
+  );
+  const operationContextKey = contextKey(stableOperationContext);
+  const [dependencies, setDependencies] = useState({
+    store,
+    lock,
+    transport,
+    operationContextKey,
+  });
 
   // Reset readiness before rendering controls for a replacement environment.
   if (
     dependencies.store !== store ||
     dependencies.lock !== lock ||
-    dependencies.transport !== transport
+    dependencies.transport !== transport ||
+    dependencies.operationContextKey !== operationContextKey
   ) {
-    setDependencies({ store, lock, transport });
+    setDependencies({ store, lock, transport, operationContextKey });
     setRecord(null);
     setStorage("loading");
     setBusy(false);
@@ -56,7 +83,7 @@ export function useDemoOperation(
     const generation = lifecycle.current;
     if (transport !== null) {
       void store
-        .load(MOCK_CONTEXT)
+        .load(stableOperationContext)
         .then((saved) => {
           if (generation !== lifecycle.current) return;
           if (saved !== null) setRecord(recoverOperationRecord(saved));
@@ -71,7 +98,7 @@ export function useDemoOperation(
       runner.current?.stop();
       runner.current = null;
     };
-  }, [store, lock, transport]);
+  }, [store, lock, transport, stableOperationContext, operationContextKey]);
 
   function start(confirmed: SelectionSnapshot): void {
     if (
