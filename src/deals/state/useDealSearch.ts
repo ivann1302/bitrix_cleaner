@@ -26,6 +26,12 @@ export function useCrmSearch(adapter: BitrixAdapter) {
     let result: CrmSearchResult;
     try {
       result = await adapter.search(criteria);
+      if (
+        result.kind === "success" &&
+        result.items.some((item) => item.entity !== criteria.entity)
+      ) {
+        result = { kind: "failure", code: "invalid-adapter-response" };
+      }
     } catch {
       result = { kind: "failure", code: "unexpected" };
     }

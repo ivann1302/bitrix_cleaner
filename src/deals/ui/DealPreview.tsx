@@ -133,8 +133,14 @@ export function DealPreview({
                     </td>
                     <td>{item.assignedByName}</td>
                     <td>
-                      <span>Создана: {formatDate(item, "createdAt")}</span>
-                      <span>Изменена: {formatDate(item, "updatedAt")}</span>
+                      <span>
+                        {entity === "deal" ? "Создана" : "Создан"}:{" "}
+                        {formatDate(item, "createdAt")}
+                      </span>
+                      <span>
+                        {entity === "deal" ? "Изменена" : "Изменен"}:{" "}
+                        {formatDate(item, "updatedAt")}
+                      </span>
                     </td>
                     <td>{item.statusName}</td>
                     <td>

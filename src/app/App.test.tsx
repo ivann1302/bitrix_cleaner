@@ -79,6 +79,27 @@ describe("App", () => {
     expect(screen.queryByLabelText("Воронка")).not.toBeInTheDocument();
   });
 
+  it("fails closed when an adapter returns options for another entity", async () => {
+    render(
+      <App
+        adapter={{
+          supportedEntities: ["deal", "lead"],
+          getFilterOptions: () => Promise.resolve(TEST_LEAD_FILTER_OPTIONS),
+          search: () => Promise.resolve({ kind: "empty" }),
+        }}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("alert", {
+        name: "",
+      }),
+    ).toHaveTextContent("Не удалось загрузить демо-фильтры.");
+    expect(
+      screen.queryByLabelText("Неуспешный статус"),
+    ).not.toBeInTheDocument();
+  });
+
   it("показывает labels и не запускает пустой фильтр", async () => {
     const user = userEvent.setup();
     const searchDeals = vi.fn(() =>

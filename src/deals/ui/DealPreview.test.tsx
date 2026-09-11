@@ -96,6 +96,9 @@ describe("DealPreview", () => {
     expect(screen.getByRole("columnheader", { name: "Статус" })).toBeVisible();
     expect(screen.queryByText("Воронка")).not.toBeInTheDocument();
     expect(screen.getByText("лидов выбрано")).toBeVisible();
+    expect(screen.getByText(/Создан:/)).toBeVisible();
+    expect(screen.getByText(/Изменен:/)).toBeVisible();
+    expect(screen.queryByText(/Создана:/)).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Некачественная заявка" }),
     ).toHaveAttribute("href", "https://portal.example/crm/lead/details/41/");

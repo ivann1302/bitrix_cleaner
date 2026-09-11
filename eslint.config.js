@@ -7,6 +7,7 @@ export default tseslint.config(
   {
     ignores: [
       ".agents",
+      ".worktrees",
       ".superpowers",
       "crm-cleaner-docs",
       "dist",

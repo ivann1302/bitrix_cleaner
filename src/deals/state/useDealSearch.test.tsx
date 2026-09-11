@@ -1,6 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { createDeal, TEST_FILTER_OPTIONS } from "../../test/dealFixtures";
+import {
+  createDeal,
+  createLead,
+  TEST_FILTER_OPTIONS,
+} from "../../test/dealFixtures";
 import type { BitrixAdapter } from "../data/BitrixAdapter";
 import type {
   CrmSearchResult,
@@ -42,6 +46,25 @@ function adapterWith(search: BitrixAdapter["search"]): BitrixAdapter {
 }
 
 describe("useDealSearch", () => {
+  it("rejects items returned for another CRM entity", async () => {
+    const { result } = renderHook(() =>
+      useCrmSearch(
+        adapterWith(() =>
+          Promise.resolve({ kind: "success", items: [createLead()] }),
+        ),
+      ),
+    );
+
+    await act(async () => {
+      await result.current.search(firstCriteria);
+    });
+
+    expect(result.current.state).toMatchObject({
+      kind: "failure",
+      code: "invalid-adapter-response",
+    });
+  });
+
   it("не принимает старый ответ лида после нового поиска сделок", async () => {
     const lead = deferred<CrmSearchResult>();
     const deal = deferred<CrmSearchResult>();

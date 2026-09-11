@@ -55,6 +55,7 @@ describe("local operation flow", () => {
     const user = userEvent.setup();
     const adapter = new MockBitrixAdapter({
       leads: [createLead(), createLead({ id: "42", title: "Сохранить лид" })],
+      behavior: { deleteDelayMs: 100 },
     });
     const storage = services();
     render(<App adapter={adapter} operationServices={storage} />);
@@ -70,6 +71,8 @@ describe("local operation flow", () => {
       screen.getByRole("button", { name: "Удалить 1 демо-лид" }),
     );
 
+    expect(screen.getByRole("radio", { name: "Сделки" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Лиды" })).toBeDisabled();
     expect(await screen.findByText("Операция завершена")).toBeVisible();
     expect(storage.saved()?.context.entity).toBe("lead");
     expect(storage.saved()?.items).toEqual([

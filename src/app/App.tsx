@@ -128,8 +128,12 @@ export function App({
     let active = true;
     void adapter.getFilterOptions(entity).then(
       (value) => {
-        if (active && value.entity === entity)
-          setOptionsState({ kind: "ready", adapter, entity, value });
+        if (!active) return;
+        setOptionsState(
+          value.entity === entity
+            ? { kind: "ready", adapter, entity, value }
+            : { kind: "failure", adapter, entity },
+        );
       },
       () => {
         if (active) setOptionsState({ kind: "failure", adapter, entity });

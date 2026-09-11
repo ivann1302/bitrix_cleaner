@@ -1,5 +1,6 @@
 .agents/
 .codex/
+.worktrees/
 .superpowers/
 crm-cleaner-docs/
 assets/
