@@ -79,7 +79,7 @@ function delayedTransport() {
   const sent = deferred<void>();
   const calls: string[] = [];
   const transport: DeleteTransport = {
-    deleteDeal: (id) => {
+    deleteItem: (id) => {
       calls.push(id);
       sent.resolve();
       return response.promise;

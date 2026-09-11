@@ -87,7 +87,7 @@ function fixture(ids = ["1", "2"], retainHistory = true) {
       },
     },
     transport: {
-      deleteDeal: async (id) => {
+      deleteItem: async (id) => {
         calls.push(id);
         events.push(`delete:${id}`);
         return deleteImpl(id);
@@ -137,6 +137,49 @@ function fixture(ids = ["1", "2"], retainHistory = true) {
 }
 
 describe("OperationRunner", () => {
+  it("sends confirmed lead IDs with lead context and an isolated lock/checkpoint", async () => {
+    const f = fixture();
+    const lead: SelectionSnapshot = {
+      ...f.selected,
+      context: { ...f.selected.context, entity: "lead" },
+      criteria: {
+        entity: "lead",
+        dateField: "createdAt",
+        beforeDate: "2026-01-01",
+        statusId: null,
+        assignedById: null,
+      },
+    };
+    const sent: string[] = [];
+    const runner = new OperationRunner({
+      store: {
+        load: () => Promise.resolve(null),
+        save: (record) => {
+          expect(record.context.entity).toBe("lead");
+          return Promise.resolve();
+        },
+      },
+      lock: {
+        runExclusive: async (key, work) => {
+          expect(key).toBe('["mock.example","1","lead"]');
+          await work();
+          return true;
+        },
+      },
+      transport: {
+        deleteItem: (id, context) => {
+          sent.push(`${context.entity}:${id}`);
+          return Promise.resolve({ kind: "deleted" });
+        },
+      },
+      getCurrentSnapshot: () => lead,
+      now: () => 1_000_000,
+      onUpdate: () => {},
+    });
+    await runner.start(lead);
+    expect(sent).toEqual(["lead:1", "lead:2"]);
+  });
+
   it.each([
     {
       name: "empty IDs",

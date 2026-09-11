@@ -117,11 +117,13 @@ export function DealConfirmation({ snapshot, options, onConfirm }: Props) {
               Пользователь: {opened.context.userId} · Сделки:{" "}
               {opened.ids.length}
             </p>
-            <CriteriaSummary
-              draft={opened.criteria}
-              options={options}
-              title="Подтверждаемые условия"
-            />
+            {opened.criteria.entity === "deal" && (
+              <CriteriaSummary
+                draft={opened.criteria}
+                options={options}
+                title="Подтверждаемые условия"
+              />
+            )}
             <p>
               Будут обработаны только выбранные ID. В реальной CRM удаление
               может быть необратимым; CSV не является полной резервной копией.

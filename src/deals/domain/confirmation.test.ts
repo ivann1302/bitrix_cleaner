@@ -5,7 +5,7 @@ import {
   isSelectionCurrent,
   type SelectionSnapshot,
 } from "./confirmation";
-import type { DealSearchCriteria } from "./types";
+import type { DealSearchCriteria, LeadSearchCriteria } from "./types";
 
 const now = 1_000_000;
 const criteria: DealSearchCriteria = {
@@ -39,6 +39,57 @@ function snapshot(): SelectionSnapshot {
 }
 
 describe("createSelectionSnapshot", () => {
+  it("accepts a lead selection and isolates otherwise identical deal IDs", () => {
+    const source = input();
+    const leadCriteria: LeadSearchCriteria = {
+      entity: "lead",
+      dateField: "createdAt",
+      beforeDate: "2026-01-01",
+      statusId: null,
+      assignedById: null,
+    };
+    const leadInput = {
+      ...source,
+      context: { ...source.context, entity: "lead" as const },
+      criteria: leadCriteria,
+      items: source.items.map((item) => ({ ...item, entity: "lead" as const })),
+    };
+    const lead = createSelectionSnapshot(leadInput, now);
+    expect(lead?.context.entity).toBe("lead");
+    expect(lead?.ids).toEqual(["1", "2"]);
+    if (!lead) throw new Error("Expected lead snapshot");
+    expect(isSelectionCurrent(lead, snapshot(), now)).toBe(false);
+    expect(
+      createSelectionSnapshot({ ...leadInput, context: source.context }, now),
+    ).toBeNull();
+    expect(
+      createSelectionSnapshot({ ...source, context: leadInput.context }, now),
+    ).toBeNull();
+    expect(
+      createSelectionSnapshot({ ...leadInput, items: source.items }, now),
+    ).toBeNull();
+    expect(
+      createSelectionSnapshot(
+        { ...leadInput, criteria: { ...leadCriteria, beforeDate: null } },
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it("rejects items from another entity even when excluded", () => {
+    const source = input();
+    expect(
+      createSelectionSnapshot(
+        {
+          ...source,
+          items: [createDeal(), { ...createDeal({ id: "2" }), entity: "lead" }],
+          excludedIds: new Set(["2"]),
+        },
+        now,
+      ),
+    ).toBeNull();
+  });
+
   it("fixes exactly the selected IDs after exclusions", () => {
     expect(
       createSelectionSnapshot(

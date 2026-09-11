@@ -224,7 +224,7 @@ export class OperationRunner {
         }
         let outcome: DeleteOutcome;
         try {
-          outcome = await this.options.transport.deleteDeal(
+          outcome = await this.options.transport.deleteItem(
             sent.id,
             selection.context,
           );

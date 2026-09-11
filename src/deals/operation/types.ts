@@ -34,5 +34,5 @@ export type DeleteOutcome =
   | { kind: "error"; code: string; temporary: boolean; retryAfterMs?: number };
 
 export interface DeleteTransport {
-  deleteDeal(id: string, context: OperationContext): Promise<DeleteOutcome>;
+  deleteItem(id: string, context: OperationContext): Promise<DeleteOutcome>;
 }

@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDeal } from "../../test/dealFixtures";
-import type { Deal, DealSearchCriteria } from "../domain/types";
+import type {
+  Deal,
+  DealSearchCriteria,
+  Lead,
+  LeadSearchCriteria,
+} from "../domain/types";
 import { MockBitrixAdapter } from "./MockBitrixAdapter";
 import { MOCK_FILTER_OPTIONS } from "./mockDeals";
 
@@ -13,6 +18,28 @@ const baseCriteria: DealSearchCriteria = {
   assignedById: null,
 };
 
+const leadCriteria: LeadSearchCriteria = {
+  entity: "lead",
+  dateField: "createdAt",
+  beforeDate: "2026-01-31",
+  statusId: null,
+  assignedById: null,
+};
+function lead(overrides: Partial<Lead> = {}): Lead {
+  return {
+    entity: "lead",
+    id: "41",
+    title: "Неуспешный лид",
+    statusId: "JUNK",
+    statusName: "Некачественный лид",
+    assignedById: "10",
+    assignedByName: "Анна Смирнова",
+    createdAt: "2026-01-10T09:00:00.000Z",
+    updatedAt: "2026-02-01T09:00:00.000Z",
+    ...overrides,
+  };
+}
+
 function createDeals(count: number): readonly Deal[] {
   return Array.from({ length: count }, (_, index) =>
     createDeal({ id: String(index + 1) }),
@@ -20,6 +47,78 @@ function createDeals(count: number): readonly Deal[] {
 }
 
 describe("MockBitrixAdapter", () => {
+  it("searches only failed leads with entity-specific filter options", async () => {
+    const adapter = new MockBitrixAdapter({
+      leads: [
+        lead(),
+        lead({ id: "42", statusId: "CONVERTED" }),
+        lead({ id: "43", statusId: "NEW" }),
+      ],
+    });
+    expect(adapter.supportedEntities).toEqual(["deal", "lead"]);
+    expect(await adapter.getFilterOptions("lead")).toMatchObject({
+      entity: "lead",
+      statuses: [
+        { id: "JUNK", isFailed: true },
+        { id: "CANNOT_CONTACT", isFailed: true },
+      ],
+    });
+    expect(await adapter.search(leadCriteria)).toEqual({
+      kind: "success",
+      items: [lead()],
+    });
+    expect(
+      await adapter.search({ ...leadCriteria, statusId: "CONVERTED" }),
+    ).toEqual({ kind: "empty" });
+  });
+
+  it("filters lead status, assignee and selected date with inclusive UTC+3 boundary", async () => {
+    const matching = lead({ updatedAt: "2026-01-31T20:59:59.999Z" });
+    const adapter = new MockBitrixAdapter({
+      leads: [
+        matching,
+        lead({ id: "42", statusId: "CANNOT_CONTACT" }),
+        lead({ id: "43", assignedById: "20" }),
+        lead({ id: "44", updatedAt: "2026-01-31T21:00:00.000Z" }),
+      ],
+    });
+    expect(
+      await adapter.search({
+        ...leadCriteria,
+        dateField: "updatedAt",
+        statusId: "JUNK",
+        assignedById: "10",
+      }),
+    ).toEqual({ kind: "success", items: [matching] });
+  });
+
+  it("deduplicates leads and enforces the complete collection limit", async () => {
+    const items = Array.from({ length: 3000 }, (_, i) =>
+      lead({ id: String(i + 1) }),
+    );
+    expect(
+      await new MockBitrixAdapter({
+        leads: [...items, lead({ id: "1" })],
+      }).search(leadCriteria),
+    ).toMatchObject({ kind: "success", items });
+    expect(
+      await new MockBitrixAdapter({
+        leads: [...items, lead({ id: "3001" })],
+      }).search(leadCriteria),
+    ).toEqual({ kind: "over-limit", matchedAtLeast: 3001 });
+  });
+
+  it("provides deterministic lead demo data sufficient for pagination", async () => {
+    const result = await new MockBitrixAdapter().search({
+      ...leadCriteria,
+      beforeDate: "2026-12-31",
+    });
+    expect(result.kind).toBe("success");
+    if (result.kind !== "success") throw new Error("Expected demo leads");
+    expect(result.items.length).toBeGreaterThan(25);
+    expect(result.items.every((item) => item.entity === "lead")).toBe(true);
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });

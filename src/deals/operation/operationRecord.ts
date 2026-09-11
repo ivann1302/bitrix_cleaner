@@ -1,5 +1,5 @@
 import type { OperationContext } from "../domain/confirmation";
-import { DEAL_SEARCH_LIMIT } from "../domain/dealSearch";
+import { CRM_SEARCH_LIMIT } from "../domain/dealSearch";
 import type { OperationItem, OperationRecord } from "./types";
 
 function object(value: unknown): Record<string, unknown> {
@@ -32,7 +32,7 @@ export function parseOperationRecord(
     raw.createdAt < 0 ||
     !nonempty(storedContext.portal) ||
     !nonempty(storedContext.userId) ||
-    storedContext.entity !== "deal" ||
+    (storedContext.entity !== "deal" && storedContext.entity !== "lead") ||
     typeof storedContext.isAdmin !== "boolean" ||
     storedContext.portal !== context.portal ||
     storedContext.userId !== context.userId ||
@@ -45,7 +45,7 @@ export function parseOperationRecord(
       raw.status !== "interrupted") ||
     !Array.isArray(raw.items) ||
     raw.items.length === 0 ||
-    raw.items.length > DEAL_SEARCH_LIMIT
+    raw.items.length > CRM_SEARCH_LIMIT
   )
     throw new Error("INVALID_CHECKPOINT");
 
@@ -92,7 +92,7 @@ export function parseOperationRecord(
     context: {
       portal: storedContext.portal,
       userId: storedContext.userId,
-      entity: "deal",
+      entity: storedContext.entity,
       isAdmin: storedContext.isAdmin,
     },
     createdAt: raw.createdAt,

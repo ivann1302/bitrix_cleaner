@@ -1,14 +1,15 @@
-import type { Deal, DealSearchCriteria } from "./types";
+import type { CrmItem, CrmSearchCriteria, CrmSearchDraft } from "./types";
 import {
+  CRM_SEARCH_LIMIT,
   criteriaSignature,
-  DEAL_SEARCH_LIMIT,
-  validateDealSearchDraft,
+  validateCrmSearchDraft,
 } from "./dealSearch";
+import type { CrmEntity } from "./types";
 
 export interface OperationContext {
   readonly portal: string;
   readonly userId: string;
-  readonly entity: "deal";
+  readonly entity: CrmEntity;
   readonly isAdmin: boolean;
 }
 
@@ -16,7 +17,7 @@ export interface SelectionSnapshot {
   readonly context: OperationContext;
   readonly revision: number;
   readonly selectionVersion: number;
-  readonly criteria: DealSearchCriteria;
+  readonly criteria: CrmSearchCriteria;
   readonly ids: readonly string[];
   readonly collectedAt: number;
 }
@@ -25,8 +26,8 @@ interface SelectionInput {
   readonly context: OperationContext;
   readonly revision: number;
   readonly selectionVersion: number;
-  readonly criteria: DealSearchCriteria;
-  readonly items: readonly Deal[];
+  readonly criteria: CrmSearchCriteria;
+  readonly items: readonly CrmItem[];
   readonly excludedIds: ReadonlySet<string>;
   readonly collectedAt: number;
 }
@@ -42,27 +43,36 @@ function isFresh(collectedAt: number, now: number): boolean {
 
 function isValidSelection(snapshot: SelectionSnapshot, now: number): boolean {
   const { context, criteria, ids } = snapshot;
+  const draft: CrmSearchDraft =
+    criteria.entity === "deal"
+      ? {
+          entity: "deal",
+          dateField: criteria.dateField,
+          beforeDate: criteria.beforeDate ?? "",
+          pipelineId: criteria.pipelineId ?? "",
+          stageId: criteria.stageId ?? "",
+          assignedById: criteria.assignedById ?? "",
+        }
+      : {
+          entity: "lead",
+          dateField: criteria.dateField,
+          beforeDate: criteria.beforeDate ?? "",
+          statusId: criteria.statusId ?? "",
+          assignedById: criteria.assignedById ?? "",
+        };
   return (
     context.isAdmin &&
     context.portal.trim() !== "" &&
     context.userId.trim() !== "" &&
-    context.entity === "deal" &&
+    (context.entity === "deal" || context.entity === "lead") &&
+    criteria.entity === context.entity &&
     Number.isSafeInteger(snapshot.revision) &&
     snapshot.revision > 0 &&
     Number.isSafeInteger(snapshot.selectionVersion) &&
     snapshot.selectionVersion >= 0 &&
-    (criteria.dateField === "createdAt" ||
-      criteria.dateField === "updatedAt") &&
-    validateDealSearchDraft({
-      entity: "deal",
-      dateField: criteria.dateField,
-      beforeDate: criteria.beforeDate ?? "",
-      pipelineId: criteria.pipelineId ?? "",
-      stageId: criteria.stageId ?? "",
-      assignedById: criteria.assignedById ?? "",
-    }).ok &&
+    validateCrmSearchDraft(draft).ok &&
     ids.length > 0 &&
-    ids.length <= DEAL_SEARCH_LIMIT &&
+    ids.length <= CRM_SEARCH_LIMIT &&
     ids.every((id) => /^[1-9]\d*$/.test(id)) &&
     new Set(ids).size === ids.length &&
     isFresh(snapshot.collectedAt, now)
@@ -73,6 +83,11 @@ export function createSelectionSnapshot(
   input: SelectionInput,
   now: number,
 ): SelectionSnapshot | null {
+  if (
+    input.criteria.entity !== input.context.entity ||
+    input.items.some((item) => item.entity !== input.context.entity)
+  )
+    return null;
   const snapshot: SelectionSnapshot = {
     context: { ...input.context },
     criteria: { ...input.criteria },

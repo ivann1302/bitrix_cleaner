@@ -21,6 +21,26 @@ const record = {
 };
 
 describe("operation checkpoint boundary", () => {
+  it("preserves schema 1 lead records only in a matching lead context", () => {
+    const leadContext = { ...context, entity: "lead" as const };
+    const leadRecord = { ...record, context: leadContext };
+    expect(parseOperationRecord(leadRecord, leadContext)).toEqual(leadRecord);
+    expect(parseOperationRecord(record, context)).toEqual(record);
+    expect(() => parseOperationRecord(leadRecord, context)).toThrow(
+      "INVALID_CHECKPOINT",
+    );
+    expect(() => parseOperationRecord(record, leadContext)).toThrow(
+      "INVALID_CHECKPOINT",
+    );
+    expect(() =>
+      parseOperationRecord(
+        { ...record, context: { ...context, entity: "contact" } },
+        context,
+      ),
+    ).toThrow("INVALID_CHECKPOINT");
+    expect(contextKey(leadContext)).not.toBe(contextKey(context));
+  });
+
   it.each(["pending", "sent"])(
     "rejects completed reports containing %s items",
     (status) => {

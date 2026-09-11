@@ -8,7 +8,6 @@ import {
 } from "../deals/domain/dealSearch";
 import type {
   DealFilterOptions,
-  DealSearchCriteria,
   DealSearchDraft,
   DealSearchValidationErrors,
 } from "../deals/domain/types";
@@ -79,7 +78,7 @@ export function App({
       ? createSelectionSnapshot(
           {
             ...state,
-            criteria: state.criteria as DealSearchCriteria,
+            criteria: state.criteria,
             items: state.items.filter((item) => item.entity === "deal"),
             context: {
               portal: context.portal,
