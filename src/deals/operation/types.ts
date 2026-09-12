@@ -2,6 +2,13 @@ import type { OperationContext } from "../domain/confirmation";
 
 export type ItemStatus = "pending" | "sent" | "deleted" | "error" | "unknown";
 
+// Live UI state only: a reloaded operation never resumes a retry timer.
+export interface RetryWait {
+  readonly id: string;
+  readonly nextAttempt: number;
+  readonly delayMs: number;
+}
+
 export interface OperationItem {
   readonly id: string;
   readonly status: ItemStatus;

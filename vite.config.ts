@@ -4,6 +4,7 @@ import { configDefaults, defineConfig } from "vitest/config";
 export default defineConfig({
   base: "./",
   plugins: [react()],
+  build: { license: true },
   test: {
     environment: "jsdom",
     exclude: [...configDefaults.exclude, ".worktrees/**"],

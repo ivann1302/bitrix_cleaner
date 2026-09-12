@@ -90,6 +90,39 @@ function delayedTransport() {
 }
 
 describe("useDemoOperation lifecycle", () => {
+  it("exposes retry waiting and clears it when stopped without another send", async () => {
+    const storage = services();
+    const calls: string[] = [];
+    const transport: DeleteTransport = {
+      deleteItem: (id) => {
+        calls.push(id);
+        return Promise.resolve({
+          kind: "error",
+          code: "rate-limit",
+          temporary: true,
+          retryAfterMs: 5000,
+        });
+      },
+    };
+    const snapshot = selection();
+    const { result } = renderHook(() =>
+      useDemoOperation(snapshot, transport, storage.dependencies),
+    );
+    await waitFor(() => expect(result.current.storage).toBe("ready"));
+    act(() => result.current.start(snapshot));
+    await waitFor(() =>
+      expect(result.current.retryWait).toEqual({
+        id: "1",
+        nextAttempt: 2,
+        delayMs: 5000,
+      }),
+    );
+    act(() => result.current.stop());
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    expect(result.current.retryWait).toBeNull();
+    expect(calls).toEqual(["1"]);
+    expect(storage.held()).toBe(false);
+  });
   it("ignores a late deal checkpoint after switching to leads with the same services", async () => {
     const oldLoad = deferred<OperationRecord | null>();
     const loaded: string[] = [];

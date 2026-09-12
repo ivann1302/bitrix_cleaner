@@ -293,6 +293,7 @@ export function App({
         {operation.record !== null && (
           <OperationProgress
             record={operation.record}
+            retryWait={operation.retryWait}
             busy={operation.busy}
             onPause={operation.pause}
             onResume={operation.resume}

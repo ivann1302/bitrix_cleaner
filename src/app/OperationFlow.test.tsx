@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MockBitrixAdapter } from "../deals/data/MockBitrixAdapter";
 import type {
   OperationRecord,
@@ -51,6 +51,54 @@ function services() {
 }
 
 describe("local operation flow", () => {
+  it("removes an open confirmation when the entity changes programmatically", async () => {
+    const user = userEvent.setup();
+    const adapter = new MockBitrixAdapter({
+      deals: [createDeal()],
+      leads: [createLead()],
+    });
+    const deleteItem = vi.spyOn(adapter, "deleteItem");
+    const storage = services();
+    render(<App adapter={adapter} operationServices={storage} />);
+
+    await user.type(await screen.findByLabelText("Дата до"), "2026-12-31");
+    await user.click(screen.getByRole("button", { name: "Найти сделки" }));
+    await user.click(
+      await screen.findByRole("button", { name: "К подтверждению" }),
+    );
+    const oldConfirmation = screen.getByRole("dialog");
+    expect(
+      screen.getByRole("button", { name: "Удалить 1 демо-сделку" }),
+    ).toBeEnabled();
+    expect(oldConfirmation).toBeVisible();
+
+    // Native modal dialogs block pointer navigation; exercise a programmatic
+    // entity change to verify invalidation independently of that browser guard.
+    fireEvent.click(screen.getByRole("radio", { name: "Лиды" }));
+
+    expect(oldConfirmation).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Найти лиды" }),
+    ).toBeEnabled();
+    expect(deleteItem).not.toHaveBeenCalled();
+    expect(storage.saved()).toBeNull();
+
+    await user.type(screen.getByLabelText("Дата до"), "2026-12-31");
+    await user.click(screen.getByRole("button", { name: "Найти лиды" }));
+    await user.click(
+      await screen.findByRole("button", { name: "К подтверждению" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Удалить 1 демо-лид" }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: "Удалить 1 демо-сделку" }),
+    ).not.toBeInTheDocument();
+    expect(deleteItem).not.toHaveBeenCalled();
+    expect(storage.saved()).toBeNull();
+  });
+
   it("searches, excludes, confirms, and deletes only selected demo leads", async () => {
     const user = userEvent.setup();
     const adapter = new MockBitrixAdapter({

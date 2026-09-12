@@ -1,4 +1,4 @@
-import type { OperationRecord } from "../operation/types";
+import type { OperationRecord, RetryWait } from "../operation/types";
 import { ENTITY_COPY } from "../domain/entityCopy";
 
 const labels = {
@@ -19,6 +19,7 @@ const itemLabels = {
 interface Props {
   readonly record: OperationRecord;
   readonly busy: boolean;
+  readonly retryWait?: RetryWait | null;
   readonly onPause: () => void;
   readonly onResume: () => void;
   readonly onStop: () => void;
@@ -27,6 +28,7 @@ interface Props {
 export function OperationProgress({
   record,
   busy,
+  retryWait = null,
   onPause,
   onResume,
   onStop,
@@ -45,6 +47,14 @@ export function OperationProgress({
         · {record.context.entity === "deal" ? "Сделки" : "Лиды"}
       </p>
       <div role="status">
+        {busy && record.status === "running" && retryWait !== null && (
+          <p>
+            Временный отказ API. Ожидаем {Math.ceil(retryWait.delayMs / 1000)} с
+            перед повтором записи ID {retryWait.id}; следующая попытка{" "}
+            {retryWait.nextAttempt} из 3. Можно поставить на паузу или
+            остановить новые запросы.
+          </p>
+        )}
         <p>
           Обработано {processed} из {record.items.length}
         </p>

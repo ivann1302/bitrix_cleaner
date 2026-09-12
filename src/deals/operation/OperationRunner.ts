@@ -10,6 +10,7 @@ import type {
   OperationLock,
   OperationRecord,
   OperationStore,
+  RetryWait,
 } from "./types";
 
 interface RunnerOptions {
@@ -20,6 +21,7 @@ interface RunnerOptions {
   readonly now?: () => number;
   readonly wait?: (ms: number) => Promise<void>;
   readonly onUpdate: (record: OperationRecord) => void;
+  readonly onRetryWait?: (waiting: RetryWait | null) => void;
 }
 
 export class OperationRunner {
@@ -27,6 +29,7 @@ export class OperationRunner {
   private paused = false;
   private stopped = false;
   private wake: (() => void) | null = null;
+  private cancelRetryWait: (() => void) | null = null;
   private record: OperationRecord | null = null;
   private selection: SelectionSnapshot | null = null;
   private readonly consumed = new Set<string>();
@@ -269,8 +272,11 @@ export class OperationRunner {
         const delay = Number.isFinite(requested)
           ? Math.min(5000, Math.max(0, requested))
           : 500;
-        await (this.options.wait?.(delay) ??
-          new Promise<void>((resolve) => setTimeout(resolve, delay)));
+        await this.waitForRetry({
+          id: sent.id,
+          nextAttempt: attempt + 1,
+          delayMs: delay,
+        });
       }
       if (this.stopped) break;
     }
@@ -279,6 +285,27 @@ export class OperationRunner {
         ...this.record,
         status: this.stopped ? "stopped" : "completed",
       });
+  }
+
+  private async waitForRetry(waiting: RetryWait): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const cancelled = new Promise<void>((resolve) => {
+      this.cancelRetryWait = resolve;
+    });
+    try {
+      this.options.onRetryWait?.(waiting);
+      if (this.stopped) return;
+      const elapsed =
+        this.options.wait?.(waiting.delayMs) ??
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, waiting.delayMs);
+        });
+      await Promise.race([elapsed, cancelled]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      this.cancelRetryWait = null;
+      this.options.onRetryWait?.(null);
+    }
   }
 
   pause(): void {
@@ -300,6 +327,7 @@ export class OperationRunner {
     this.stopped = true;
     this.paused = false;
     this.wake?.();
+    this.cancelRetryWait?.();
     if (this.record) this.update({ ...this.record, status: "stopped" });
   }
 }

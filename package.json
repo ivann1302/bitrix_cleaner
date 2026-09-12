@@ -15,6 +15,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:release": "node --test scripts/release.node-test.mjs",
+    "package:release": "npm run test:release && npm run typecheck && npm run lint && npm run format:check && npm test && npm run build && node scripts/release.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

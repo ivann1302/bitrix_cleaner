@@ -951,6 +951,70 @@ describe("BitrixDealReadAdapter lead read path", () => {
     });
   });
 
+  it.each([
+    { name: "null row", row: null },
+    { name: "array row", row: [] },
+    { name: "missing status ID", row: { NAME: "Ошибка", SEMANTICS: "F" } },
+    {
+      name: "empty failed-status name",
+      row: { STATUS_ID: "BROKEN", NAME: " ", SEMANTICS: "F" },
+    },
+    {
+      name: "invalid failed-status sort",
+      row: { STATUS_ID: "BROKEN", NAME: "Ошибка", SEMANTICS: "F", SORT: -1 },
+    },
+  ])("fails closed on a lead dictionary with $name", async ({ row }) => {
+    const gateway = createGateway({
+      lists: {
+        "crm.status.list": [[leadStatuses[2]], [row]],
+        "crm.item.list": [[rawLead(701)]],
+      },
+    });
+    const adapter = new BitrixDealReadAdapter(gateway);
+
+    await expect(adapter.getFilterOptions("lead")).rejects.toMatchObject({
+      code: "invalid-bitrix-response",
+    });
+    await expect(adapter.search(BASE_LEAD_CRITERIA)).resolves.toEqual({
+      kind: "failure",
+      code: "invalid-bitrix-response",
+    });
+    expect(gateway.lists.some(({ method }) => method === "crm.item.list")).toBe(
+      false,
+    );
+  });
+
+  it("does not infer failed leads from malformed or absent semantics", async () => {
+    const gateway = createGateway({
+      lists: {
+        "crm.status.list": [
+          [
+            { STATUS_ID: "JUNK", NAME: "Без семантики" },
+            {
+              STATUS_ID: "ARRAY",
+              NAME: "Массив",
+              EXTRA: [{ SEMANTICS: "failure" }],
+            },
+            { STATUS_ID: "OBJECT", NAME: "Объект", SEMANTICS: { value: "F" } },
+            {
+              STATUS_ID: "UNKNOWN",
+              NAME: "Неизвестная",
+              EXTRA: { SEMANTICS: "apology" },
+            },
+          ],
+        ],
+        "crm.item.list": [[rawLead(701)]],
+      },
+    });
+
+    await expect(
+      new BitrixDealReadAdapter(gateway).search(BASE_LEAD_CRITERIA),
+    ).resolves.toEqual({ kind: "empty" });
+    expect(gateway.lists.some(({ method }) => method === "crm.item.list")).toBe(
+      false,
+    );
+  });
+
   it("builds the exact failed-lead query and parses historical assignees", async () => {
     const gateway = createGateway({
       lists: {

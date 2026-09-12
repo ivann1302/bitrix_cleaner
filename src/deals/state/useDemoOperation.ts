@@ -12,6 +12,7 @@ import type {
   OperationLock,
   OperationRecord,
   OperationStore,
+  RetryWait,
 } from "../operation/types";
 
 export interface OperationServices {
@@ -40,6 +41,7 @@ export function useDemoOperation(
     "loading",
   );
   const [busy, setBusy] = useState(false);
+  const [retryWait, setRetryWait] = useState<RetryWait | null>(null);
   const [error, setError] = useState(false);
   const [usedRevision, setUsedRevision] = useState<number | null>(null);
   const stableOperationContext = useMemo(
@@ -70,6 +72,7 @@ export function useDemoOperation(
     setRecord(null);
     setStorage("loading");
     setBusy(false);
+    setRetryWait(null);
     setError(false);
     setUsedRevision(null);
   }
@@ -117,6 +120,9 @@ export function useDemoOperation(
         onUpdate: (next) => {
           if (generation === lifecycle.current) setRecord(next);
         },
+        onRetryWait: (next) => {
+          if (generation === lifecycle.current) setRetryWait(next);
+        },
       });
     }
     setBusy(true);
@@ -134,6 +140,7 @@ export function useDemoOperation(
 
   return {
     record,
+    retryWait,
     storage,
     busy,
     error,

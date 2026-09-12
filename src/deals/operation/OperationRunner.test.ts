@@ -49,6 +49,11 @@ function fixture(ids = ["1", "2"], retainHistory = true) {
   const events: string[] = [];
   const updates: OperationRecord[] = [];
   const saved: OperationRecord[] = [];
+  const retryUpdates: Array<{
+    id: string;
+    nextAttempt: number;
+    delayMs: number;
+  } | null> = [];
   let held = false;
   let lockAvailable = true;
   let onLock = () => {};
@@ -95,6 +100,9 @@ function fixture(ids = ["1", "2"], retainHistory = true) {
     },
     getCurrentSnapshot: () => current,
     now: () => clock,
+    onRetryWait: (
+      value: { id: string; nextAttempt: number; delayMs: number } | null,
+    ) => retryUpdates.push(value),
     wait: (ms) => waitImpl(ms),
     onUpdate: (record) => {
       if (!retainHistory) updates.length = 0;
@@ -108,6 +116,7 @@ function fixture(ids = ["1", "2"], retainHistory = true) {
     events,
     updates,
     saved,
+    retryUpdates,
     setCurrent: (value: SelectionSnapshot | null) => {
       current = value;
     },
@@ -329,6 +338,11 @@ describe("OperationRunner", () => {
     await f.runner.start(f.selected);
     expect(f.calls).toEqual(["1", "1", "1"]);
     expect(delays).toHaveLength(2);
+    expect(f.retryUpdates.filter((value) => value !== null)).toEqual([
+      { id: "1", nextAttempt: 2, delayMs: 5000 },
+      { id: "1", nextAttempt: 3, delayMs: 5000 },
+    ]);
+    expect(f.retryUpdates.at(-1)).toBeNull();
     expect(delays.every((ms) => ms >= 0 && ms <= 5000)).toBe(true);
     expect(f.updates.at(-1)?.items[0]).toEqual({
       id: "1",
@@ -349,6 +363,60 @@ describe("OperationRunner", () => {
       expect(f.updates.at(-1)?.status).toBe("stopped");
     },
   );
+  it("releases the lock on stop without waiting for a retry delay or sending again", async () => {
+    const f = fixture();
+    const waiting = deferred<void>();
+    const delay = deferred<void>();
+    f.setDelete(() =>
+      Promise.resolve({ kind: "error", code: "rate-limit", temporary: true }),
+    );
+    f.setWait(() => {
+      waiting.resolve();
+      return delay.promise;
+    });
+    const running = f.runner.start(f.selected);
+    await waiting.promise;
+    f.runner.stop();
+    await running;
+    expect(f.calls).toEqual(["1"]);
+    expect(f.held()).toBe(false);
+    expect(f.updates.at(-1)?.status).toBe("stopped");
+    expect(f.retryUpdates.at(-1)).toBeNull();
+    delay.resolve();
+  }, 1500);
+
+  it("keeps a retry paused after the delay expires until explicitly resumed", async () => {
+    const f = fixture(["1"]);
+    const waiting = deferred<void>();
+    const delay = deferred<void>();
+    const paused = deferred<void>();
+    f.setDelete(() =>
+      Promise.resolve(
+        f.calls.length === 1
+          ? { kind: "error", code: "rate-limit", temporary: true }
+          : { kind: "deleted" },
+      ),
+    );
+    f.setWait(() => {
+      waiting.resolve();
+      return delay.promise;
+    });
+    f.setSave((record) => {
+      if (record.status === "paused") paused.resolve();
+      return Promise.resolve();
+    });
+    const running = f.runner.start(f.selected);
+    await waiting.promise;
+    f.runner.pause();
+    delay.resolve();
+    await paused.promise;
+    expect(f.calls).toEqual(["1"]);
+    expect(f.held()).toBe(true);
+    f.runner.resume();
+    await running;
+    expect(f.calls).toEqual(["1", "1"]);
+    expect(f.updates.at(-1)?.items[0]?.status).toBe("deleted");
+  });
   it("continues after a permanent item error without retrying it", async () => {
     const f = fixture();
     f.setDelete((id) =>
