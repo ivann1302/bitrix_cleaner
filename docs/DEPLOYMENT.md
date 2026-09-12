@@ -2,6 +2,16 @@
 
 Подготовлены локальные кандидаты для этапа 1.3, а не завершённая установка в Bitrix24. С 12 сентября 2026 года повторная сборка автоматизирована: `npm run package:release` (описание ниже).
 
+## Текущий пакет — 12 сентября
+
+Commit приложения: `70b854d38a0dd6cbff691a1668db0ca2014348c7`, manifest подтверждает `git.dirty: false`.
+
+Путь от корня основного репозитория: `.worktrees/local-readiness/.superpowers/releases/crm-cleaner-70b854d38a0d-FZfUEs/crm-cleaner.zip`. Рядом находятся `SHA256SUMS` и `manifest.json`.
+
+SHA-256: `e75f9d24213b4818bab4c059f36c588fc3e1f6aa25e0508b2ada4cf8999d249f`. Проверка `sha256sum -c SHA256SUMS` дала OK; ZIP проверен через `unzip -t` упаковщиком.
+
+Полный pipeline прошёл до commit: 301 тест приложения, 12 тестов упаковки, типы, lint, форматирование, build. После commit повторно упакована та же неизменённая сборка для фиксации чистой ревизии; последующие изменения этого документа не меняют код пакета. В ZIP пять файлов: HTML/PHP, JS/CSS и `THIRD-PARTY-NOTICES.txt`. На хостинг пакет не загружен.
+
 ## Предыдущий пакет — 11 сентября
 
 Локальный архив: `.superpowers/releases/crm-cleaner-81f801d.zip`.
